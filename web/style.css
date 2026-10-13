@@ -10,5 +10,8 @@
 .ribbon #player-squad-label{width:160px}.ribbon label:has(#position){width:160px}.picker-button{text-align:left;overflow:hidden;text-overflow:ellipsis;max-width:100%;min-height:34px;font-weight:400}.picker-options{height:330px;overflow:auto;margin-top:12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.picker-option{display:flex;flex-direction:row;align-items:center;gap:10px;padding:9px 7px;border-bottom:1px solid oklch(.94 .005 250);color:var(--ink);font-size:12px}.picker-option input{flex-shrink:0}.picker-option:hover{background:var(--selected)}#picker-dialog{width:560px}#picker-selected{min-height:34px;max-height:70px;overflow:auto;margin-top:10px}#picker-dialog .filter-footer{margin-top:10px}.pitch button[aria-pressed=true]{border-width:2px}
 .picker-option span{min-width:0;overflow-wrap:anywhere}
 .pagination{flex-wrap:wrap}
+.empty-squad{color:var(--muted);white-space:normal}
+.row-number{width:44px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+#table th:has([data-sort="staff_area"]),#table th:has([data-sort="staff_role"]){text-align:left}
 .comparison-score{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line)}.comparison-score>div{display:flex;flex-direction:column;gap:6px;padding:12px;min-width:0;overflow-wrap:anywhere}.comparison-score>div+div{border-left:1px solid var(--line)}.comparison-score .better{color:var(--green);background:oklch(.96 .02 155)}.comparison-score b{font-size:11px}.comparison-score-note{margin:8px 0 16px}
 @media(max-width:850px){.tab-end{width:100%;max-width:100%;min-width:0;flex-wrap:wrap;justify-content:flex-start}.titlebar button{max-width:100%}.titlebar .save-info{margin-right:0}}

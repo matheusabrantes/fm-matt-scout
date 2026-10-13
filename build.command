@@ -10,6 +10,7 @@ mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
 xcrun swiftc macos/App.swift -O -framework AppKit -framework WebKit -o "$app_dir/Contents/MacOS/FMMattScout"
 cp scout.py server.py presets.py salaries.py "$app_dir/Contents/Resources/"
 cp nation-names.json "$app_dir/Contents/Resources/"
+cp club-genders.json "$app_dir/Contents/Resources/"
 rm -rf "$app_dir/Contents/Resources/__pycache__"
 cp -R web "$app_dir/Contents/Resources/"
 if [[ -f competition-names.csv ]]; then cp competition-names.csv "$app_dir/Contents/Resources/"; fi
