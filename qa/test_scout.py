@@ -1,0 +1,167 @@
+import json
+import tempfile
+import unittest
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from scout import SUM_FIELDS, GOALKEEPING, NATION_NAMES, NATION_REGIONS, EU_NATIONS, attribute_sum, enrich, filter_rows, club_squads
+from presets import Presets, validate_filter
+
+
+def player(uid=1, level=10, **changes):
+    row = {'uid': uid, 'unique_id': uid, 'name': f'Jogador {uid}', 'age': 20,
+           'attributes': {key: level for key in SUM_FIELDS}, 'positions': {'stc': 20},
+           'ability': {'current': 100, 'potential': 150}, 'reputation': {'home': 1000, 'current': 2000, 'world': 500},
+           'club_uid': 10, 'team_slot': 0, 'contract': None}
+    row.update(changes)
+    return enrich(row)
+
+
+class ScoutTests(unittest.TestCase):
+    def test_nation_names_and_alphabetical_sort_without_numeric_fallback(self):
+        self.assertEqual(NATION_NAMES[189], 'Brasil')
+        self.assertEqual(NATION_NAMES[162], 'Portugal')
+        self.assertNotIn(999, NATION_NAMES)
+        rows = [player(1, nation_id=189, nation_name='Brasil'),
+                player(2, nation_id=145, nation_name='Alemanha'),
+                player(3, nation_id=999, nation_name=None)]
+        self.assertEqual([r['uid'] for r in filter_rows(rows, {'sort':'nation_id','direction':'asc'})], [2,1,3])
+
+    def test_sum_has_36_unique_fields_and_excludes_hidden_and_keeper(self):
+        self.assertEqual(len(SUM_FIELDS), 36)
+        self.assertEqual(len(set(SUM_FIELDS)), 36)
+        p = player()
+        p['attributes'].update({key: 20 for key in GOALKEEPING})
+        p['attributes']['consistency'] = 20
+        self.assertEqual(attribute_sum(p['attributes']), 360)
+
+    def test_missing_or_invalid_attributes_never_become_zero(self):
+        for value in (None, 0, 21, 10.0, True):
+            attrs = {key: 10 for key in SUM_FIELDS}
+            attrs['passing'] = value
+            self.assertIsNone(attribute_sum(attrs))
+
+    def test_720_is_maximum(self):
+        self.assertEqual(player(level=20)['attribute_sum'], 720)
+
+    def test_tied_ability_uses_sum(self):
+        a, b = player(1, 10), player(2, 11)
+        self.assertEqual([r['uid'] for r in filter_rows([a,b], {'sort':'ca'})], [2,1])
+
+    def test_combined_filters_and_inclusive_attribute_bounds(self):
+        a, b = player(1,10), player(2,11)
+        a['attributes']['injury_proneness'] = 5
+        b['attributes']['injury_proneness'] = 15
+        q = {'club':'10','age_min':'20','age_max':'20','ca_min':'100','pa_max':'150',
+             'attr_passing':'10','maxattr_passing':'10','maxattr_injury_proneness':'5'}
+        self.assertEqual([r['uid'] for r in filter_rows([a,b],q)], [1])
+
+    def test_unknown_attribute_fails_condition(self):
+        p = player(); p['personality'] = {}
+        self.assertEqual(filter_rows([p], {'attr_professionalism':'15'}), [])
+
+    def test_accent_insensitive_search(self):
+        self.assertEqual(len(filter_rows([player(name='João Ávila')], {'search':'joao avila'})), 1)
+
+    def test_multiple_choices_are_or_within_each_field_and_and_across_fields(self):
+        people=[player(1,club_uid=10,nation_id=7,positions={'dc':20}),player(2,club_uid=11,nation_id=8,positions={'dm':20}),player(3,club_uid=12,nation_id=7,positions={'dc':20}),player(4,club_uid=10,nation_id=9,positions={'mc':20})]
+        q={'club':'10,11','nation':'7,8','position':'DC,DM'}
+        self.assertEqual({r['uid'] for r in filter_rows(people,q)}, {1,2})
+        valid=validate_filter({'name':'Vários','kind':'players','filters':q})
+        self.assertEqual(valid['filters'],q)
+
+    def test_multiple_leagues_and_release_kinds(self):
+        p=player(league_key='db:10',competition_keys=['db:12'],contract={'clauses':[{'kind':'relegation_release','value':100}]})
+        self.assertEqual(len(filter_rows([p],{'league':'db:10,db:11','release_kind':'relegation_release,non_promotion_release'})),1)
+        self.assertEqual(filter_rows([p],{'league':'db:12'}),[])
+        for filters in ({'club':'10,invalid'},{'nation':'1,,2'},{'position':'DC,BAD'},{'league':'db:10,BAD'},{'release_kind':'relegation_release,BAD'}):
+            with self.assertRaises(ValueError):validate_filter({'name':'Inválido','kind':'players','filters':filters})
+
+    def test_regions_use_nationality_and_club_separately_with_unknowns_excluded(self):
+        self.assertEqual(NATION_REGIONS[189], 'south_america')
+        self.assertEqual(NATION_REGIONS[162], 'europe')
+        self.assertEqual(NATION_REGIONS[105], 'south_america')
+        self.assertEqual(NATION_REGIONS[149], 'asia')
+        self.assertEqual(set(NATION_REGIONS), set(NATION_NAMES))
+        rows = [player(1,nation_id=189,club_region='europe'),
+                player(2,nation_id=162,club_region='south_america'),
+                player(3,nation_id=None,club_region=None)]
+        query={'nation_region':'south_america,asia','based_region':'europe'}
+        self.assertEqual([r['uid'] for r in filter_rows(rows,query)], [1])
+        self.assertEqual(len(filter_rows(rows,{'based_region':'europe,south_america'})),2)
+        clean=validate_filter({'name':'Regiões','kind':'staff','filters':query})
+        self.assertEqual(clean['filters'],query)
+        with self.assertRaises(ValueError):validate_filter({'name':'Inválido','kind':'players','filters':{'based_region':'europa'}})
+
+    def test_all_citizenships_are_searched_for_nation_region_and_eu(self):
+        dual=player(1,nation_id=189,second_nation_ids=[162,150,162],home_grown_nation_ids=[139])
+        brazilian=player(2,nation_id=189,second_nation_ids=[],home_grown_nation_ids=[162])
+        unknown=player(3,nation_id=189,second_nation_ids=[999])
+        self.assertEqual(dual['nation_ids'],[189,162,150])
+        self.assertEqual(dual['nation_name'],'Brasil, Portugal, Itália')
+        for filters in ({'nation':'162'},{'nation':'150'},{'nation_region':'europe'},{'eu_national':'yes'}):
+            self.assertEqual([p['uid'] for p in filter_rows([dual,brazilian,unknown],filters)],[1])
+        self.assertEqual([p['uid'] for p in filter_rows([dual,brazilian,unknown],{'eu_national':'no'})],[2])
+        self.assertIsNone(unknown['eu_national'])
+        self.assertEqual(len(EU_NATIONS),27)
+        for n in (139,159,167,175,160,172):self.assertNotIn(n,EU_NATIONS)
+        self.assertIn(136,EU_NATIONS)
+
+    def test_unknown_pa_sorts_last_in_both_directions(self):
+        a, b = player(), player(2, ability={'current':100,'potential':None})
+        for direction in ('asc','desc'):
+            self.assertEqual(filter_rows([b,a], {'sort':'pa','direction':direction})[-1]['uid'], 2)
+
+    def test_attribute_sort(self):
+        self.assertEqual(filter_rows([player(1,10),player(2,15)], {'sort':'attr_passing'})[0]['uid'], 2)
+
+    def test_first_team_and_all_club_averages(self):
+        clubs = [{'uid':10}, {'uid':11}]
+        people = [player(1,age=20), player(2,age=30,team_slot=1,ability={'current':80,'potential':None}), player(3,club_uid=None)]
+        club_squads(clubs, people)
+        first = clubs[0]['squad_metrics']['first']; all_players = clubs[0]['squad_metrics']['all']
+        self.assertEqual(first['player_count'],1)
+        self.assertEqual(all_players['ca_mean'],90)
+        self.assertEqual(all_players['age_mean'],25)
+        self.assertEqual(all_players['pa_mean'],150)
+        self.assertEqual(all_players['pa_count'],1)
+        self.assertIsNone(clubs[1]['squad_metrics']['all']['ca_mean'])
+
+    def test_club_search_includes_youth_and_reserves_by_default(self):
+        people = [player(1), player(2, team_slot=1, age=18), player(3, team_slot=2, age=17), player(4, club_uid=11)]
+        self.assertEqual(len(filter_rows(people, {'club':'10'})),3)
+        self.assertEqual(len(filter_rows(people, {'club':'10','squad':'first'})),1)
+        self.assertEqual(len(filter_rows(people, {'club':'10','squad':'other'})),2)
+
+    def test_release_filters_and_traits(self):
+        p = player(contract={'kind_code':1,'squad_status_code':3,'clauses':[{'kind':'relegation_release','value':500}]},traits_code=[5,8])
+        self.assertEqual(len(filter_rows([p],{'release_kind':'relegation_release','release_fee_max':'500','traits':'5,8'})),1)
+        self.assertEqual(filter_rows([p],{'traits':'5,9'}),[])
+
+    def test_presets_roundtrip_preserves_all_tactical_conditions(self):
+        document = {'name':'Volante · 4-3-3','kind':'players','filters':{'position':'DM','club':'10','nation':'7','league':'db:10','nation_region':'south_america','based_region':'europe,asia','eu_national':'yes','age_min':'16','age_max':'23','attr_passing':'15','maxattr_injury_proneness':'7','sort':'attribute_sum'}}
+        with tempfile.TemporaryDirectory() as d:
+            source=Presets(Path(d)/'source.json'); target=Presets(Path(d)/'target.json')
+            saved=source.add(document)
+            count=target.import_file(json.loads(source.path.read_text()))
+            self.assertEqual(count,1)
+            self.assertEqual(target.read()[0]['filters'],saved['filters'])
+            self.assertEqual(target.import_file(json.loads(source.path.read_text())),0)
+
+    def test_invalid_import_is_atomic(self):
+        with tempfile.TemporaryDirectory() as d:
+            store=Presets(Path(d)/'filters.json')
+            store.add({'name':'Antes','kind':'players','filters':{}})
+            before=store.path.read_bytes()
+            with self.assertRaises(ValueError):
+                store.import_file({'version':1,'presets':[{'name':'Válido','kind':'players','filters':{}},{'name':'Inválido','kind':'players','filters':{'attr_passing':'21'}}]})
+            self.assertEqual(store.path.read_bytes(),before)
+
+    def test_invalid_presets_rejected(self):
+        for values in ({'unknown':'1'}, {'age_min':'30','age_max':'20'}, {'attr_passing':'nan'}, {'attr_passing':'0'}, {'maxattr_passing':'5','attr_passing':'15'}, {'pa_max':'201'}, {'traits':'__import__'}, {'sort':'__dict__'}):
+            with self.assertRaises(ValueError): validate_filter({'name':'Teste','kind':'players','filters':values})
+
+
+if __name__ == '__main__':
+    unittest.main()
