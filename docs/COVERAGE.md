@@ -43,7 +43,9 @@ Esta versão lê saves reais. Ainda não é equivalente funcionalmente ao Genie 
 
 Busca por nome, clube, idade, nacionalidade pelo nome, regiões, cidadania UE, CA/PA e personalidade. Staff atualmente tem apenas a nacionalidade principal disponível no leitor. Salário e expiração disponíveis quando lidos. Perfil mostra as preferências de estilo que o leitor conhece: ataque, negócios, passes diretos, interferência, paciência, pressão, recursos, compra de jogadores, jogos psicológicos, flexibilidade, intensidade de treino, rotação, ritmo e largura. **Preferências não são capacidade de treinamento.**
 
-Pendentes: cargo atual confiável, gênero, regen, nacionalidades adicionais do staff, regras específicas de elegibilidade, reputações próprias, best rating, estrelas/ratings de treino, trabalho com jovens, disciplina, motivação, avaliação de capacidade/potencial, fisioterapia, conhecimento tático, gestão e pesquisa de especialistas em bolas paradas. Não há base suficiente para recomendar os melhores olheiros ou treinadores por esses atributos nesta versão.
+Colunas Função e Área do staff e filtro de área com busca/seleção múltipla: médica, comissão técnica e recrutamento vêm das listas do clube. A função exata só é identificada para o treinador humano; os demais mostram Cargo não identificado. Soma de habilidades tem coluna configurável, mas fica Não disponível por falta dos atributos profissionais; não soma preferências ou personalidade. Detalhes em `CLUB_GENDERS.md`.
+
+Pendentes: demais cargos atuais confiáveis, gênero das pessoas, regen, nacionalidades adicionais do staff, regras específicas de elegibilidade, reputações próprias, best rating, estrelas/ratings de treino, trabalho com jovens, disciplina, motivação, avaliação de capacidade/potencial, fisioterapia, conhecimento tático, gestão e pesquisa de especialistas em bolas paradas. Não há base suficiente para recomendar os melhores olheiros ou treinadores por esses atributos nesta versão.
 
 ## Clubes
 
@@ -53,6 +55,8 @@ Pendentes: cargo atual confiável, gênero, regen, nacionalidades adicionais do 
 | Saldo; transferências restantes; orçamento salarial | Perfil e filtros funcionais apenas nos clubes com dados financeiros decodificados. Data dos valores exposta; sem conversão de moeda. |
 | Médias CA/PA/idade; número de jogadores | Funcional, ordenável, cobertura por indicador. Equipe principal ou todos os vinculados. |
 | Base/reservas | Incluídas em Todos, quando vinculadas pelo leitor. Os nomes exatos das categorias secundárias estão pendentes. |
+| Masculino/feminino | Femininos identificados por referência local de IDs são ocultados; 1.017 no COR. Masculinos conhecidos e categoria desconhecida permanecem. Sem classificação por nome, faixa de ID ou ausência de elenco. Cobertura parcial, documentada em `CLUB_GENDERS.md`. |
+| Ausência de elenco lido | Mostra Nenhum jogador lido em vez de 0 na tabela e no perfil; não afirma que o clube esteja sem elenco no jogo. |
 | Formação, treino e academia | Pendente. Instalações corporativas não foram confundidas com treino/formação. |
 | Estádio, capacidade, médias/mín./máx. de público | Pendente. Não atribuir um estádio sem vínculo confirmado. |
 | Status profissional/semiprofissional/amador; uniformes | Pendente. |
@@ -65,7 +69,7 @@ Pendentes: cargo atual confiável, gênero, regen, nacionalidades adicionais do 
 |---|---|
 | Ordenação e atributos como colunas | Funcional. |
 | Colunas personalizadas e layout persistente | Funcional por tipo de lista, também acessível pelo botão direito no cabeçalho. |
-| Comparação | Funcional, dois registros de jogadores ou staff. Resumo no topo com atributos vencidos, empates e dados ausentes; vencedor destacado em verde e texto. Para jogadores, o placar considera os 36 atributos técnicos/mentais/físicos com pesos iguais; idade, CA/PA, soma, goleiro, ocultos e personalidade não entram nesse placar. Staff usa os atributos de personalidade disponíveis, com controvérsia invertida. |
+| Comparação | Funcional, dois registros de jogadores ou staff. Resumo no topo com atributos vencidos, empates e dados ausentes; vencedor destacado em verde e texto. Jogadores de linha e comparação mista usam 36 atributos técnicos/mentais/físicos, sem seção ou destaque de goleiro. Se ambos têm familiaridade GK ≥15, os 11 de goleiro entram na tabela e no placar, totalizando 47. Pesos iguais; idade, CA/PA, soma, ocultos e personalidade ficam fora do placar dos jogadores. Staff compara personalidade disponível, com controvérsia invertida. |
 | Listas | Persistência local, CSV básico e JSON portátil. Importação compara ID, nome e nascimento. |
 | Shortlist `.fmf` importável no FM | Pendente: exige implementação/validação do formato real e um roundtrip no jogo. |
 | Busca do clube do treinador | Funcional quando o leitor identifica o treinador/clube. |
@@ -73,6 +77,7 @@ Pendentes: cargo atual confiável, gênero, regen, nacionalidades adicionais do 
 | Filtros combinados e filtros táticos salvos | Funcional. JSON validado e importação sem substituição dos filtros existentes. |
 | Busca interna e seleção múltipla | Clube, todas as nacionalidades lidas, país onde atua, regiões, tipo de contrato, status no elenco e cláusulas. Campo permite múltiplas posições. OR no mesmo campo; AND entre campos. Liga atual ainda pendente. |
 | Mais linhas na lista | Carregar mais acrescenta 50/100/200 linhas; conserva registros carregados e posição da rolagem, com indicação de fim. Filtros/ordenação/colunas reiniciam a lista. |
+| Número da linha | Coluna Nº fixa à esquerda para jogadores, staff e clubes. Segue filtros/ordenação, continua ao carregar mais e reinicia com uma nova pesquisa. |
 | Avaliação por Jev/OpenJev | Adiada por decisão do usuário. Nenhum modelo instalado ou dados enviados a esses serviços. |
 | Instalador autônomo/notarização | Pendente. O `.app` local depende da `.venv` do projeto. |
 

@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from scout import GROUPS, ROLES, NATION_NAMES, REGIONS, Scout, filter_rows, column_value
+from scout import GROUPS, ROLES, NATION_NAMES, REGIONS, STAFF_AREAS, Scout, filter_rows, column_value
 from presets import Presets, validate_filter
 from salaries import SalarySettings
 from fmsave.models.players import Trait
@@ -29,7 +29,7 @@ def serve(port=0, storage=None):
     state = {'loading': False, 'progress': '', 'error': None}
     layout_path = scout.storage.parent / 'layouts.json'
     layout_columns = {'name','age','positions','club_name','ca','pa','attribute_sum','goalkeeping_sum','rating','nation_id','reputation','ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot'} | {f'attr_{key}' for group in GROUPS.values() for key in group}
-    layout_columns.add('eu_national')
+    layout_columns.update(('eu_national','staff_role','staff_area'))
 
     def load(path):
         try:
@@ -58,8 +58,11 @@ def serve(port=0, storage=None):
             self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
             for k, v in (headers or {}).items():
                 self.send_header(k, v)
-            self.end_headers()
-            self.wfile.write(body)
+            try:
+                self.end_headers()
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                return
 
         def route(self):
             parsed = urlsplit(self.path)
@@ -111,6 +114,7 @@ def serve(port=0, storage=None):
                                     'nations': [{'id': n, 'name': NATION_NAMES[n]} for n in sorted({n for r in rows for n in r.get('nation_ids', []) if n in NATION_NAMES})],
                                     'based': [{'id': n, 'name': NATION_NAMES[n]} for n in sorted({r['club_nation_id'] for r in rows if r.get('club_nation_id') in NATION_NAMES})],
                                     'regions': REGIONS,
+                                    'staff_areas': STAFF_AREAS if kind == 'staff' else {},
                                     'competitions': []})
                         return
                     if path == 'api/salaries':

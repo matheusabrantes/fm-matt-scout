@@ -34,7 +34,13 @@ Clique em Colunas ou com o botão direito em um cabeçalho para escolher indicad
 
 Carregar mais acrescenta linhas abaixo das já carregadas, mantendo os registros anteriores e a rolagem. Linhas por clique permite adicionar 50, 100 ou 200 de cada vez. Alterar filtros, ordenação ou colunas inicia uma nova listagem; mudar apenas a quantidade por clique conserva as linhas atuais. Ao terminar, o botão mostra Todos carregados.
 
-A comparação mostra no topo quantos dos 36 atributos técnicos, mentais e físicos cada jogador venceu, além de empates e valores ausentes. O vencedor do placar aparece em verde e com texto; idade, CA/PA e soma não contam como atributos vencidos. Os atributos têm o mesmo peso, sem ajuste por posição ou tática.
+A comparação mostra no topo quantos atributos cada jogador venceu, além de empates e valores ausentes. Jogadores de linha e comparações mistas usam 36 atributos técnicos, mentais e físicos. A seção de goleiro e seus 11 atributos só aparecem e contam se ambos têm familiaridade GK ≥15, totalizando 47. O vencedor aparece em verde e texto; idade, CA/PA e soma não contam como atributos vencidos. Pesos iguais, sem ajuste por tática.
+
+Todas as listas têm uma coluna Nº à esquerda, de acordo com os filtros e a ordenação atuais. Carregar mais continua a sequência; uma nova pesquisa reinicia em 1.
+
+Clubes femininos identificados por IDs de uma referência local são ocultados, incluindo seus jogadores e staff vinculados. Categoria desconhecida permanece visível. No COR foram identificados 1.017, preservando os masculinos homônimos. Sem elenco lido, a contagem mostra Nenhum jogador lido. A referência e sua cobertura parcial estão em `docs/CLUB_GENDERS.md`.
+
+Staff tem colunas Função, Área do staff e Soma de habilidades. O filtro de área permite busca e seleção múltipla nas listas médica, comissão técnica e recrutamento. Cargo exato e soma profissional ainda não têm dados suficientes: aparecem como Cargo não identificado e Não disponível. Preferências e personalidade não são somadas como habilidades profissionais.
 
 Na pesquisa, Salvar filtro guarda os critérios atuais com um nome. Exportar filtros cria um JSON portátil; Importar filtros restaura esses critérios, incluindo clube, posição, elenco, idade, nacionalidade, competição, contrato, atributos e ordenação. Arquivos inválidos são rejeitados sem substituir os filtros existentes. IDs de competições que só existem naquela carreira podem não funcionar em outro save.
 

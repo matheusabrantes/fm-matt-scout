@@ -14,6 +14,10 @@ from pathlib import Path
 import fmsave
 
 NATION_NAMES = {int(key): value for key, value in json.loads((Path(__file__).parent / 'nation-names.json').read_text()).items()}
+_CLUB_GENDERS = json.loads((Path(__file__).parent / 'club-genders.json').read_text())
+FEMALE_CLUB_IDS = frozenset(_CLUB_GENDERS['female_ids'])
+MALE_CLUB_IDS = frozenset(_CLUB_GENDERS['male_ids'])
+STAFF_AREAS = {'medical':'Área médica','coaching':'Comissão técnica','recruitment':'Recrutamento','manager':'Treinador (humano)','unknown':'Área não identificada'}
 REGIONS = {'africa':'África', 'asia':'Ásia', 'europe':'Europa',
            'north_america':'América do Norte, Central e Caribe', 'south_america':'América do Sul', 'oceania':'Oceania'}
 NATION_REGIONS = {n: region for start, end, region in ((0,50,'africa'),(51,91,'asia'),(92,120,'north_america'),
@@ -165,6 +169,27 @@ def club_squads(clubs, players):
                                  'first': squad_metrics([p for p in all_players if p.get('team_slot') == 0])}
 
 
+def exclude_female_clubs(clubs, players, staff):
+    hidden = set()
+    for club in clubs:
+        # fmsave 0.5.10 exposes the closing database identifier with +1.
+        database_id = club['unique_id'] - 1 if club.get('unique_id') is not None else None
+        club['gender'] = 'female' if database_id in FEMALE_CLUB_IDS else 'male' if database_id in MALE_CLUB_IDS else None
+        if club['gender'] == 'female':
+            hidden.add(club['uid'])
+    return ([c for c in clubs if c['uid'] not in hidden],
+            [p for p in players if p.get('club_uid') not in hidden],
+            [s for s in staff if s.get('club_uid') not in hidden], len(hidden))
+
+
+def staff_fields(member):
+    areas = ['manager'] if member.get('is_human_manager') else [key for index,key in enumerate(('medical','coaching','recruitment')) if index in member.get('list_indexes', ())]
+    member['staff_area_keys'] = areas or ['unknown']
+    member['staff_area'] = ', '.join(STAFF_AREAS[key] for key in member['staff_area_keys'])
+    member['staff_role'] = 'Treinador (humano)' if member.get('is_human_manager') else 'Cargo não identificado'
+    member['attribute_sum'] = None
+
+
 def enrich(player):
     nationality_fields(player)
     attrs = player.get('attributes', {})
@@ -200,6 +225,8 @@ def filter_rows(rows, query, shortlist=()):
         if search and search not in normalized(f"{row.get('name', '')} {row.get('club_name', '')} {row.get('club_short_name', '')}"):
             continue
         if 'club' in numeric_choices and row.get('club_uid') not in numeric_choices['club']:
+            continue
+        if query.get('staff_area') and not set(query['staff_area'].split(',')).intersection(row.get('staff_area_keys', ())):
             continue
         if query.get('squad') == 'first' and row.get('team_slot') != 0:
             continue
@@ -270,6 +297,7 @@ def filter_rows(rows, query, shortlist=()):
     sort = query.get('sort', 'pa' if kind != 'clubs' else 'reputation')
     valid = {'name', 'age', 'club_name', 'ca', 'pa', 'attribute_sum', 'rating', 'reputation', 'nation_id', 'eu_national', 'goalkeeping_sum', 'ability_difference', 'rep_home', 'rep_current', 'rep_world', 'wage', 'value', 'release_fee', 'ca_mean', 'pa_mean', 'age_mean', 'player_count', 'ca_count', 'pa_count', 'age_count', 'team_slot'}
     attribute_columns = {f'attr_{key}' for group in GROUPS.values() for key in group}
+    valid.update(('staff_area','staff_role'))
     if sort not in valid | attribute_columns:
         raise ValueError('Coluna de ordenação inválida.')
     def key(row):
@@ -327,11 +355,13 @@ class Scout:
                     staff = []
                     notes.append(f'Staff indisponível: {exc}')
                 for member in staff:
+                    staff_fields(member)
                     member['ca'] = member['ability']['current']
                     member['pa'] = member['ability']['potential']
                     member['ability_difference'] = member['pa'] - member['ca'] if member['pa'] is not None and member['ca'] is not None else None
                     contract_fields(member)
                 clubs = records(save.clubs())
+                clubs, players, staff, hidden_female_clubs = exclude_female_clubs(clubs, players, staff)
                 for club in clubs:
                     club['club_uid'] = club['uid']
                     club['club_nation_id'] = club['nation_id']
@@ -390,6 +420,7 @@ class Scout:
                 meta = {'file': source.name, 'path': str(source), 'date': str(save.info.game_date),
                         'build': save.info.build, 'managed': managed,
                         'counts': {'players': len(players), 'staff': len(staff), 'clubs': len(clubs)},
+                        'hidden_female_clubs': hidden_female_clubs,
                         'warnings': notes + [str(w.message) for w in captured],
                         'ability_status': fmsave.field_status(fmsave.Player, 'ability.current')}
         rows = {'players': players, 'staff': staff, 'clubs': clubs}

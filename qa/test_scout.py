@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from scout import SUM_FIELDS, GOALKEEPING, NATION_NAMES, NATION_REGIONS, EU_NATIONS, attribute_sum, enrich, filter_rows, club_squads
+from scout import SUM_FIELDS, GOALKEEPING, NATION_NAMES, NATION_REGIONS, EU_NATIONS, attribute_sum, enrich, filter_rows, club_squads, exclude_female_clubs, staff_fields
 from presets import Presets, validate_filter
 
 
@@ -19,6 +19,33 @@ def player(uid=1, level=10, **changes):
 
 
 class ScoutTests(unittest.TestCase):
+    def test_female_clubs_are_identified_by_database_id_not_name_or_empty_squad(self):
+        clubs=[{'uid':1,'unique_id':2000099872,'name':'Chelsea'},
+               {'uid':2,'unique_id':631,'name':'Chelsea'},
+               {'uid':3,'unique_id':None,'name':'Chelsea'},
+               {'uid':4,'unique_id':999999,'name':'Desconhecido'}]
+        people=[player(1,club_uid=1),player(2,club_uid=2),player(3,club_uid=3),player(4,club_uid=None)]
+        clubs,people,staff,count=exclude_female_clubs(clubs,people,[{'club_uid':1},{'club_uid':2}])
+        self.assertEqual(count,1)
+        self.assertEqual([c['uid'] for c in clubs],[2,3,4])
+        self.assertEqual(clubs[0]['gender'],'male')
+        self.assertIsNone(clubs[1]['gender'])
+        self.assertEqual([p['uid'] for p in people],[2,3,4])
+        self.assertEqual(staff,[{'club_uid':2}])
+
+    def test_staff_areas_are_multi_select_without_inventing_job_titles(self):
+        staff=[{'uid':i,'name':str(i),'list_indexes':indices,'unknown':{'r4':26}} for i,indices in enumerate([(0,),(1,),(2,),(0,2),()])]
+        for member in staff:staff_fields(member)
+        self.assertEqual([r['uid'] for r in filter_rows(staff,{'kind':'staff','staff_area':'medical,recruitment','sort':'staff_area'})],[2,3,0])
+        self.assertTrue(all(r['staff_role']=='Cargo não identificado' for r in staff))
+        self.assertTrue(all(r['attribute_sum'] is None for r in staff))
+        manager=staff[0] | {'is_human_manager':True};staff_fields(manager)
+        self.assertEqual(manager['staff_area_keys'],['manager'])
+        self.assertEqual(manager['staff_role'],'Treinador (humano)')
+        preset=validate_filter({'name':'Áreas','kind':'staff','filters':{'staff_area':'coaching,recruitment'}})
+        self.assertEqual(preset['filters']['staff_area'],'coaching,recruitment')
+        with self.assertRaises(ValueError):validate_filter({'name':'Inválido','kind':'staff','filters':{'staff_area':'scout'}})
+
     def test_nation_names_and_alphabetical_sort_without_numeric_fallback(self):
         self.assertEqual(NATION_NAMES[189], 'Brasil')
         self.assertEqual(NATION_NAMES[162], 'Portugal')
