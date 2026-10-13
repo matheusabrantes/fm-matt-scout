@@ -8,7 +8,7 @@ fi
 app_dir="$HOME/Library/Application Support/FM Matt Scout/Application/FM Matt Scout.app"
 mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
 xcrun swiftc macos/App.swift -O -framework AppKit -framework WebKit -o "$app_dir/Contents/MacOS/FMMattScout"
-cp scout.py server.py presets.py salaries.py "$app_dir/Contents/Resources/"
+cp scout.py server.py presets.py salaries.py staff_skills.py "$app_dir/Contents/Resources/"
 cp nation-names.json "$app_dir/Contents/Resources/"
 cp club-genders.json "$app_dir/Contents/Resources/"
 rm -rf "$app_dir/Contents/Resources/__pycache__"

@@ -16,4 +16,4 @@ As listas `Staff.list_indexes` permitem identificar áreas: 0 médica, 1 comiss�
 
 O campo Função só identifica Treinador (humano) quando `is_human_manager` está marcado. Os demais exibem Cargo não identificado. Os títulos exatos, como olheiro, auxiliar, fisioterapeuta ou preparador, não foram deduzidos da área nem do código `unknown.r4`: o próprio fmsave documenta que esse código não corresponde ao cargo.
 
-Soma de habilidades está disponível como coluna configurável de staff, mas mostra Não disponível. O leitor só entrega Adaptabilidade entre os atributos profissionais; preferências de estilo e personalidade não substituem os atributos de treino, gestão e avaliação necessários para essa soma.
+Soma de habilidades usa as 19 competências profissionais decodificadas pelo adaptador experimental `staff_skills.py`, sem preferências de estilo ou personalidade. Um componente ausente deixa a soma indisponível. Fontes, validação estrutural e limites estão em `STAFF_READER_RESEARCH.md`.

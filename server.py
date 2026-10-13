@@ -28,7 +28,7 @@ def serve(port=0, storage=None):
     lock = threading.RLock()
     state = {'loading': False, 'progress': '', 'error': None}
     layout_path = scout.storage.parent / 'layouts.json'
-    layout_columns = {'name','age','positions','club_name','ca','pa','attribute_sum','goalkeeping_sum','rating','nation_id','reputation','ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot'} | {f'attr_{key}' for group in GROUPS.values() for key in group}
+    layout_columns = {'name','age','positions','club_name','ca','pa','attribute_sum','goalkeeping_sum','rating','nation_id','reputation','ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot','height_cm','balance','transfer_budget_remaining','wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity'} | {f'attr_{key}' for group in GROUPS.values() for key in group}
     layout_columns.update(('eu_national','staff_role','staff_area'))
 
     def load(path):

@@ -58,6 +58,8 @@ def validate_filter(preset):
         if attribute or range_field in RANGES:
             number = float(value)
             ceiling = 20 if attribute else RANGES.get(range_field, 4294967295)
+            if kind == 'staff' and range_field == 'sum':
+                ceiling = 380
             floor = -ceiling if range_field in ('balance', 'ability_difference') else 0
             if not floor <= number <= ceiling or (attribute and not 1 <= number <= 20):
                 raise ValueError(f'{key} fora da faixa permitida.')
@@ -79,7 +81,7 @@ def validate_filter(preset):
             raise ValueError('Escopo de elenco inválido.')
         if key == 'squad' and value not in ('first','all','other'):
             raise ValueError('Equipe inválida.')
-        if key == 'sort' and value not in ('name', 'age', 'club_name', 'ca', 'pa', 'attribute_sum', 'rating', 'reputation', 'nation_id', 'eu_national', 'goalkeeping_sum', 'ability_difference', 'rep_home', 'rep_current', 'rep_world', 'wage', 'value', 'release_fee', 'ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot','staff_area','staff_role') and value not in {f'attr_{a}' for a in ATTRIBUTES}:
+        if key == 'sort' and value not in ('name', 'age', 'club_name', 'ca', 'pa', 'attribute_sum', 'rating', 'reputation', 'nation_id', 'eu_national', 'goalkeeping_sum', 'ability_difference', 'rep_home', 'rep_current', 'rep_world', 'wage', 'value', 'release_fee', 'ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot','staff_area','staff_role','height_cm','balance','transfer_budget_remaining','wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity') and value not in {f'attr_{a}' for a in ATTRIBUTES}:
             raise ValueError('Ordenação inválida.')
         if key == 'direction' and value not in ('asc', 'desc'):
             raise ValueError('Direção inválida.')

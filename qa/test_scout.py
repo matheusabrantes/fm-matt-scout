@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from scout import SUM_FIELDS, GOALKEEPING, NATION_NAMES, NATION_REGIONS, EU_NATIONS, attribute_sum, enrich, filter_rows, club_squads, exclude_female_clubs, staff_fields
+from scout import SUM_FIELDS, GOALKEEPING, NATION_NAMES, NATION_REGIONS, EU_NATIONS, attribute_sum, enrich, filter_rows, club_squads, exclude_female_clubs, staff_fields, club_stadium_fields
 from presets import Presets, validate_filter
 
 
@@ -19,6 +19,25 @@ def player(uid=1, level=10, **changes):
 
 
 class ScoutTests(unittest.TestCase):
+    def test_stadium_home_link_is_not_ownership_and_ambiguous_links_are_absent(self):
+        clubs = [{'uid': 1}, {'uid': 2}, {'uid': 3}]
+        club_stadium_fields(clubs, [
+            {'owner_club_uid': 2, 'home_club_uids': [1], 'all_seater_capacity': 49000, 'expansion_capacity': 70000},
+            {'home_club_uids': [3], 'all_seater_capacity': 100},
+            {'home_club_uids': [3], 'all_seater_capacity': 200}])
+        self.assertEqual(clubs[0]['stadium_seated_capacity'], 49000)
+        self.assertNotIn('stadium_seated_capacity', clubs[1])
+        self.assertNotIn('stadium_seated_capacity', clubs[2])
+
+    def test_height_and_professional_attribute_filter_sort_and_presets(self):
+        rows = [player(1, height_cm=190), player(2, height_cm=180), player(3, height_cm=None)]
+        self.assertEqual([r['uid'] for r in filter_rows(rows, {'height_cm_min':'185','sort':'height_cm'})], [1])
+        staff = [{'uid':1,'professional_attributes':{'motivating':18}}, {'uid':2,'professional_attributes':{'motivating':10}}, {'uid':3}]
+        self.assertEqual([r['uid'] for r in filter_rows(staff, {'kind':'staff','attr_motivating':'15','sort':'attr_motivating'})], [1])
+        self.assertEqual([r['uid'] for r in filter_rows(staff, {'kind':'staff','sort':'attr_motivating','direction':'asc'})], [2,1,3])
+        validate_filter({'name':'Staff','kind':'staff','filters':{'sum_min':'380','attr_motivating':'18','sort':'height_cm'}})
+        with self.assertRaises(ValueError):validate_filter({'name':'Staff','kind':'staff','filters':{'sum_min':'381'}})
+
     def test_female_clubs_are_identified_by_database_id_not_name_or_empty_squad(self):
         clubs=[{'uid':1,'unique_id':2000099872,'name':'Chelsea'},
                {'uid':2,'unique_id':631,'name':'Chelsea'},

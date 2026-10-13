@@ -12,6 +12,7 @@ from statistics import fmean
 from pathlib import Path
 
 import fmsave
+from staff_skills import SKILLS as STAFF_SKILLS, enrich_staff_skills
 
 NATION_NAMES = {int(key): value for key, value in json.loads((Path(__file__).parent / 'nation-names.json').read_text()).items()}
 _CLUB_GENDERS = json.loads((Path(__file__).parent / 'club-genders.json').read_text())
@@ -80,7 +81,8 @@ RANGES = {'age': 100, 'ca': 200, 'pa': 200, 'ability_difference': 200, 'sum': 72
           'rating': 100, 'rep_home': 10000, 'rep_current': 10000, 'rep_world': 10000,
           'club_reputation': 10000, 'reputation': 10000, 'value': 10**12, 'wage': 10**12,
           'release_fee': 10**12, 'balance': 10**12, 'transfer_budget_remaining': 10**12,
-          'wage_budget_weekly': 10**12}
+          'wage_budget_weekly': 10**12, 'height_cm': 255,
+          'stadium_seated_capacity': 1000000, 'stadium_expansion_capacity': 1000000}
 RELEASE_KINDS = {'minimum_fee_release', 'minimum_fee_release_foreign', 'minimum_fee_release_domestic',
                  'minimum_fee_release_domestic_higher_division', 'relegation_release', 'non_promotion_release'}
 
@@ -99,7 +101,8 @@ def contract_fields(row):
     row['has_contract_data'] = bool(c) or row.get('has_contract', False)
     return row
 GROUPS = {'Técnicos': TECHNICAL, 'Mentais': MENTAL, 'Físicos': PHYSICAL,
-          'Goleiro': GOALKEEPING, 'Ocultos': HIDDEN, 'Personalidade': PERSONALITY}
+          'Goleiro': GOALKEEPING, 'Ocultos': HIDDEN, 'Personalidade': PERSONALITY,
+          'Profissionais': {key: label for key, (_, label) in STAFF_SKILLS.items()}}
 
 # These are our transparent scouting weights, not Genie's proprietary ratings.
 ROLES = {
@@ -145,6 +148,8 @@ def normalized(text):
 def column_value(row, column):
     if column.startswith('attr_'):
         key = column[5:]
+        if key in STAFF_SKILLS:
+            return row.get('professional_attributes', {}).get(key)
         return (row.get('personality' if key in PERSONALITY else 'attributes') or {}).get(key)
     return row.get(column)
 
@@ -180,6 +185,21 @@ def exclude_female_clubs(clubs, players, staff):
     return ([c for c in clubs if c['uid'] not in hidden],
             [p for p in players if p.get('club_uid') not in hidden],
             [s for s in staff if s.get('club_uid') not in hidden], len(hidden))
+
+
+def club_stadium_fields(clubs, stadiums):
+    homes = {}
+    for stadium in stadiums:
+        for uid in stadium.get('home_club_uids', ()):
+            homes.setdefault(uid, []).append(stadium)
+    for club in clubs:
+        matches = homes.get(club['uid'], [])
+        # Ownership is not the stadium used for home matches; multiple grounds remain ambiguous.
+        if len(matches) == 1:
+            ground = matches[0]
+            club.update(stadium_name=ground.get('name'),
+                        stadium_seated_capacity=ground.get('all_seater_capacity'),
+                        stadium_expansion_capacity=ground.get('expansion_capacity'))
 
 
 def staff_fields(member):
@@ -286,9 +306,7 @@ def filter_rows(rows, query, shortlist=()):
             if (field.startswith('attr_') or field.startswith('maxattr_')) and value:
                 maximum = field.startswith('maxattr_')
                 key = field.removeprefix('maxattr_' if maximum else 'attr_')
-                attr = (row.get('attributes') or {}).get(key)
-                if key in PERSONALITY:
-                    attr = (row.get('personality') or {}).get(key)
+                attr = column_value(row, 'attr_' + key)
                 if attr is None or (attr > float(value) if maximum else attr < float(value)):
                     failed = True
                     break
@@ -297,7 +315,8 @@ def filter_rows(rows, query, shortlist=()):
     sort = query.get('sort', 'pa' if kind != 'clubs' else 'reputation')
     valid = {'name', 'age', 'club_name', 'ca', 'pa', 'attribute_sum', 'rating', 'reputation', 'nation_id', 'eu_national', 'goalkeeping_sum', 'ability_difference', 'rep_home', 'rep_current', 'rep_world', 'wage', 'value', 'release_fee', 'ca_mean', 'pa_mean', 'age_mean', 'player_count', 'ca_count', 'pa_count', 'age_count', 'team_slot'}
     attribute_columns = {f'attr_{key}' for group in GROUPS.values() for key in group}
-    valid.update(('staff_area','staff_role'))
+    valid.update(('staff_area','staff_role','height_cm','balance','transfer_budget_remaining',
+                  'wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity'))
     if sort not in valid | attribute_columns:
         raise ValueError('Coluna de ordenação inválida.')
     def key(row):
@@ -360,6 +379,10 @@ class Scout:
                     member['pa'] = member['ability']['potential']
                     member['ability_difference'] = member['pa'] - member['ca'] if member['pa'] is not None and member['ca'] is not None else None
                     contract_fields(member)
+                try:
+                    enrich_staff_skills(save, staff)
+                except (fmsave.FmsaveError, ValueError) as exc:
+                    notes.append(f'Atributos profissionais do staff indisponíveis: {exc}')
                 clubs = records(save.clubs())
                 clubs, players, staff, hidden_female_clubs = exclude_female_clubs(clubs, players, staff)
                 for club in clubs:
@@ -384,6 +407,10 @@ class Scout:
                             club['finance_date'] = record['month']
                 except (fmsave.FmsaveError, ValueError) as exc:
                     notes.append(f'Finanças dos clubes indisponíveis: {exc}')
+                try:
+                    club_stadium_fields(clubs, records(save.stadiums()))
+                except (fmsave.FmsaveError, ValueError) as exc:
+                    notes.append(f'Estádios indisponíveis: {exc}')
                 progress('Lendo ligas e competições…')
                 competitions = []
                 membership = {}
@@ -421,6 +448,7 @@ class Scout:
                         'build': save.info.build, 'managed': managed,
                         'counts': {'players': len(players), 'staff': len(staff), 'clubs': len(clubs)},
                         'hidden_female_clubs': hidden_female_clubs,
+                        'staff_skills_count': sum(s.get('attribute_sum') is not None for s in staff),
                         'warnings': notes + [str(w.message) for w in captured],
                         'ability_status': fmsave.field_status(fmsave.Player, 'ability.current')}
         rows = {'players': players, 'staff': staff, 'clubs': clubs}
