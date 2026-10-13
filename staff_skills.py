@@ -3,6 +3,9 @@
 import re
 import struct
 
+from fmsave.readers.clubs import find_club_layouts
+from staff_roles import ROLES, read_staff_roles
+
 from fmsave.readers.staff import find_staff_layouts, _header_reader, _header_values, _read_ability_block
 
 SKILLS = {
@@ -35,7 +38,7 @@ def skill_values(raw):
 
 def read_staff_skills(game_db, members, layout):
     targets = {row['uid']: row for row in members if not row.get('is_human_manager')}
-    found, ambiguous = {}, set()
+    found, selectors, ambiguous = {}, {}, set()
     reader = _header_reader(layout)
     # shortcut: allocated unequal-UID headers stay absent; replace this adapter when fmsave publishes skills.
     for match in re.finditer(rb'(?=(.{4})\1\x01)', game_db, re.DOTALL):
@@ -61,14 +64,29 @@ def read_staff_skills(game_db, members, layout):
             ambiguous.add(uid)
         else:
             found[uid] = skills
-    return {uid: values for uid, values in found.items() if uid not in ambiguous}
+            selectors[uid] = struct.unpack_from('<I', game_db, header)[0] + 1
+    return ({uid: values for uid, values in found.items() if uid not in ambiguous},
+            {uid: selector for uid, selector in selectors.items() if uid not in ambiguous})
 
 
-def enrich_staff_skills(save, members):
+def enrich_staff_skills(save, members, clubs):
     layout = find_staff_layouts(save.info.section_schemas, save.info.build).staff
     with save._context.section('game_db') as game_db:
-        skills = read_staff_skills(game_db, members, layout)
+        skills, selectors = read_staff_skills(game_db, members, layout)
+        by_selector = {}
+        for member in members:
+            selector = selectors.get(member['uid'])
+            if selector is not None:
+                by_selector.setdefault(selector, []).append(member)
+        club_layout = find_club_layouts(save.info.section_schemas.get('game_db'), save.info.build).records
+        # shortcut: only the 26.3.2 seat format is demonstrated; extend after another build is checked.
+        roles = read_staff_roles(game_db, clubs, save._context.own_club_record_spans(), by_selector,
+                                 club_layout.long_name_offset) if save.info.build.startswith('26.3.2+') else {}
     for member in members:
+        role = roles.get((member['uid'], member.get('club_uid')))
+        if role and not member.get('is_human_manager'):
+            member['staff_role_key'] = role
+            member['staff_role'] = ROLES[role]
         member['professional_attributes'] = skills.get(member['uid'], {})
         values = [member['professional_attributes'].get(key) for key in SKILLS]
         member['attribute_sum'] = sum(values) if all(value is not None for value in values) else None

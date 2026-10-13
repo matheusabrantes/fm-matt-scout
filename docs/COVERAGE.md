@@ -12,7 +12,7 @@ Esta versão lê saves reais. Ainda não é equivalente funcionalmente ao Genie 
 | União Europeia | Funcional: basta uma das nacionalidades lidas pertencer aos 27 membros atuais. Perfil, coluna e filtro Sim/Não/Qualquer. País não mapeado sem cidadania UE conhecida resulta em Indisponível e não passa pelo filtro Não. Não calcula regras de inscrição ou tratados adicionais de uma competição. |
 | Regen | Pendente. Não inferir pela faixa de ID. |
 | Internacionalizações e gols pela seleção | Pendente. |
-| Liga do clube | Pendente: o leitor não oferece vínculo confiável com a divisão atual do clube. O controle fica desabilitado. Tabelas de copas/fases não são tratadas como liga; nomear uma competição não prova que ela seja a liga atual de um clube. |
+| Liga do clube | Parcial: nomes de 56 divisões nacionais em referência explícita; vínculo pela tabela principal do save quando é único. Filtro com busca e seleção múltipla; perfil/coluna ordenável nas três listas. 150 clubes cobertos no COR. Copas e base não são aceitas como liga; sem tabela, mostra Liga não lida. Vínculo direto universal ainda pendente; detalhes em `LEAGUES.md`. |
 | Posição em campo e posições secundárias | Funcional. Campo clicável; familiaridade mínima 15. Perfil mostra valores 1–20 e pés. |
 | CA/PA mín./máx.; PA − CA | Funcional sobre campos experimentais do leitor, com ressalva †. |
 | Rating atual | Estimativa própria da melhor posição familiar. Fórmula/coeficientes no perfil. |
@@ -43,7 +43,7 @@ Esta versão lê saves reais. Ainda não é equivalente funcionalmente ao Genie 
 
 Busca por nome, clube, idade, nacionalidade pelo nome, regiões, cidadania UE, CA/PA e personalidade. Staff atualmente tem apenas a nacionalidade principal disponível no leitor. Salário e expiração disponíveis quando lidos. Perfil mostra as preferências de estilo que o leitor conhece: ataque, negócios, passes diretos, interferência, paciência, pressão, recursos, compra de jogadores, jogos psicológicos, flexibilidade, intensidade de treino, rotação, ritmo e largura. **Preferências não são capacidade de treinamento.**
 
-Colunas Função e Área do staff e filtro de área com busca/seleção múltipla: médica, comissão técnica e recrutamento vêm das listas do clube. A função exata só é identificada para o treinador humano; os demais mostram Cargo não identificado. 19 habilidades profissionais têm colunas, filtros mínimo/máximo, perfil e comparação. A soma das 19 tem máximo 380 e fica ausente se algum componente faltar; preferências e personalidade ficam fora. Leitura experimental, com fontes e limites em `STAFF_READER_RESEARCH.md`. Detalhes em `CLUB_GENDERS.md`.
+Colunas Função e Área do staff e filtro de área com busca/seleção múltipla: médica, comissão técnica e recrutamento vêm das listas do clube. Treinador principal e diretor de futebol têm assentos decodificados experimentalmente, conferidos contra o profissional contratado no próprio clube. Inclui filtro de cargo com busca/seleção múltipla e persistência. Os demais mostram Cargo não identificado. O treinador humano continua explicitamente identificado. Fontes/limites em `STAFF_ROLES_RESEARCH.md`. 19 habilidades profissionais têm colunas, filtros mínimo/máximo, perfil e comparação. A soma das 19 tem máximo 380 e fica ausente se algum componente faltar; preferências e personalidade ficam fora. Leitura experimental, com fontes e limites em `STAFF_READER_RESEARCH.md`. Detalhes em `CLUB_GENDERS.md`.
 
 Pendentes: demais cargos atuais confiáveis, gênero das pessoas, regen, nacionalidades adicionais do staff, regras específicas de elegibilidade, reputações próprias, best rating, estrelas/ratings de treino, trabalho com jovens, disciplina e pesquisa por cargo específico de especialistas em bolas paradas. Motivação, avaliação de capacidade/potencial, fisioterapia, conhecimento tático, gestão e treino de bolas paradas já são lidos experimentalmente. Não há base suficiente para recomendar os melhores olheiros ou treinadores por esses atributos nesta versão.
 
@@ -51,7 +51,7 @@ Pendentes: demais cargos atuais confiáveis, gênero das pessoas, regen, naciona
 
 | Grupo solicitado | Situação |
 |---|---|
-| Nome; país; divisão; reputação | Nome/reputação e país pelo nome funcionais. Liga atual pendente. |
+| Nome; país; divisão; reputação | Nome/reputação e país funcionais. Liga com cobertura parcial pela tabela, descrita acima. |
 | Saldo; transferências restantes; orçamento salarial | Perfil, filtros e colunas ordenáveis nos clubes com dados financeiros decodificados. Data exposta no perfil. Saldo/transferências nas unidades do save; orçamento salarial usa a configuração de moeda/período dos salários. |
 | Médias CA/PA/idade; número de jogadores | Funcional, ordenável, cobertura por indicador. Equipe principal ou todos os vinculados. |
 | Base/reservas | Incluídas em Todos, quando vinculadas pelo leitor. Os nomes exatos das categorias secundárias estão pendentes. |
@@ -75,7 +75,7 @@ Pendentes: demais cargos atuais confiáveis, gênero das pessoas, regen, naciona
 | Busca do clube do treinador | Funcional quando o leitor identifica o treinador/clube. |
 | Busca de elenco de seleção nacional | Pendente. Não confundir todos os jogadores de uma nacionalidade com convocados. |
 | Filtros combinados e filtros táticos salvos | Funcional. JSON validado e importação sem substituição dos filtros existentes. |
-| Busca interna e seleção múltipla | Clube, todas as nacionalidades lidas, país onde atua, regiões, tipo de contrato, status no elenco e cláusulas. Campo permite múltiplas posições. OR no mesmo campo; AND entre campos. Liga atual ainda pendente. |
+| Busca interna e seleção múltipla | Clube, todas as nacionalidades lidas, país onde atua, regiões, tipo de contrato, status no elenco e cláusulas. Campo permite múltiplas posições. OR no mesmo campo; AND entre campos. Liga tem cobertura parcial pelas tabelas; cargo do staff inclui treinador/diretor identificados e desconhecidos. |
 | Mais linhas na lista | Carregar mais acrescenta 50/100/200 linhas; conserva registros carregados e posição da rolagem, com indicação de fim. Filtros/ordenação/colunas reiniciam a lista. |
 | Número da linha | Coluna Nº fixa à esquerda para jogadores, staff e clubes. Segue filtros/ordenação, continua ao carregar mais e reinicia com uma nova pesquisa. |
 | Avaliação por Jev/OpenJev | Adiada por decisão do usuário. Nenhum modelo instalado ou dados enviados a esses serviços. |

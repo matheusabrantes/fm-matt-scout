@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from scout import GROUPS, ROLES, NATION_NAMES, REGIONS, STAFF_AREAS, Scout, filter_rows, column_value
+from scout import GROUPS, ROLES, NATION_NAMES, REGIONS, STAFF_AREAS, STAFF_ROLES, Scout, filter_rows, column_value
 from presets import Presets, validate_filter
 from salaries import SalarySettings
 from fmsave.models.players import Trait
@@ -28,7 +28,7 @@ def serve(port=0, storage=None):
     lock = threading.RLock()
     state = {'loading': False, 'progress': '', 'error': None}
     layout_path = scout.storage.parent / 'layouts.json'
-    layout_columns = {'name','age','positions','club_name','ca','pa','attribute_sum','goalkeeping_sum','rating','nation_id','reputation','ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot','height_cm','balance','transfer_budget_remaining','wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity'} | {f'attr_{key}' for group in GROUPS.values() for key in group}
+    layout_columns = {'name','age','positions','club_name','ca','pa','attribute_sum','goalkeeping_sum','rating','nation_id','reputation','ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot','height_cm','balance','transfer_budget_remaining','wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity','league_name'} | {f'attr_{key}' for group in GROUPS.values() for key in group}
     layout_columns.update(('eu_national','staff_role','staff_area'))
 
     def load(path):
@@ -115,7 +115,8 @@ def serve(port=0, storage=None):
                                     'based': [{'id': n, 'name': NATION_NAMES[n]} for n in sorted({r['club_nation_id'] for r in rows if r.get('club_nation_id') in NATION_NAMES})],
                                     'regions': REGIONS,
                                     'staff_areas': STAFF_AREAS if kind == 'staff' else {},
-                                    'competitions': []})
+                                    'staff_roles': STAFF_ROLES if kind == 'staff' else {},
+                                    'competitions': scout.competitions})
                         return
                     if path == 'api/salaries':
                         self.reply(salaries.view(scout.career))
