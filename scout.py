@@ -12,6 +12,7 @@ from statistics import fmean
 from pathlib import Path
 
 import fmsave
+from staff_roles import ROLES as STAFF_ROLES
 from staff_skills import SKILLS as STAFF_SKILLS, enrich_staff_skills
 
 NATION_NAMES = {int(key): value for key, value in json.loads((Path(__file__).parent / 'nation-names.json').read_text()).items()}
@@ -202,11 +203,31 @@ def club_stadium_fields(clubs, stadiums):
                         stadium_expansion_capacity=ground.get('expansion_capacity'))
 
 
+def club_league_fields(clubs, competitions, tables, names):
+    by_id = {c['id']: c for c in competitions}
+    choices = {}
+    for table in tables:
+        competition = by_id.get(table.get('competition_id'), {})
+        database_id = competition.get('database_id')
+        if database_id not in names:
+            continue
+        for row in table['rows']:
+            if row.get('team_slot') == 0 and row.get('club_uid') is not None:
+                choices.setdefault(row['club_uid'], set()).add(database_id)
+    for club in clubs:
+        ids = choices.get(club['uid'], set())
+        club['league_key'] = f'db:{next(iter(ids))}' if len(ids) == 1 else None
+        club['league_name'] = names[next(iter(ids))] if len(ids) == 1 else None
+    present = {c['league_key']: c['league_name'] for c in clubs if c['league_key']}
+    return [{'key': key, 'name': name} for key, name in sorted(present.items(), key=lambda pair: pair[1])]
+
+
 def staff_fields(member):
     areas = ['manager'] if member.get('is_human_manager') else [key for index,key in enumerate(('medical','coaching','recruitment')) if index in member.get('list_indexes', ())]
     member['staff_area_keys'] = areas or ['unknown']
     member['staff_area'] = ', '.join(STAFF_AREAS[key] for key in member['staff_area_keys'])
-    member['staff_role'] = 'Treinador (humano)' if member.get('is_human_manager') else 'Cargo não identificado'
+    member['staff_role_key'] = 'human_manager' if member.get('is_human_manager') else 'unknown'
+    member['staff_role'] = STAFF_ROLES[member['staff_role_key']]
     member['attribute_sum'] = None
 
 
@@ -245,6 +266,8 @@ def filter_rows(rows, query, shortlist=()):
         if search and search not in normalized(f"{row.get('name', '')} {row.get('club_name', '')} {row.get('club_short_name', '')}"):
             continue
         if 'club' in numeric_choices and row.get('club_uid') not in numeric_choices['club']:
+            continue
+        if query.get('staff_role') and row.get('staff_role_key') not in query['staff_role'].split(','):
             continue
         if query.get('staff_area') and not set(query['staff_area'].split(',')).intersection(row.get('staff_area_keys', ())):
             continue
@@ -316,7 +339,7 @@ def filter_rows(rows, query, shortlist=()):
     valid = {'name', 'age', 'club_name', 'ca', 'pa', 'attribute_sum', 'rating', 'reputation', 'nation_id', 'eu_national', 'goalkeeping_sum', 'ability_difference', 'rep_home', 'rep_current', 'rep_world', 'wage', 'value', 'release_fee', 'ca_mean', 'pa_mean', 'age_mean', 'player_count', 'ca_count', 'pa_count', 'age_count', 'team_slot'}
     attribute_columns = {f'attr_{key}' for group in GROUPS.values() for key in group}
     valid.update(('staff_area','staff_role','height_cm','balance','transfer_budget_remaining',
-                  'wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity'))
+                  'wage_budget_weekly','league_name','stadium_seated_capacity','stadium_expansion_capacity'))
     if sort not in valid | attribute_columns:
         raise ValueError('Coluna de ordenação inválida.')
     def key(row):
@@ -379,11 +402,11 @@ class Scout:
                     member['pa'] = member['ability']['potential']
                     member['ability_difference'] = member['pa'] - member['ca'] if member['pa'] is not None and member['ca'] is not None else None
                     contract_fields(member)
+                clubs = records(save.clubs())
                 try:
-                    enrich_staff_skills(save, staff)
+                    enrich_staff_skills(save, staff, clubs)
                 except (fmsave.FmsaveError, ValueError) as exc:
                     notes.append(f'Atributos profissionais do staff indisponíveis: {exc}')
-                clubs = records(save.clubs())
                 clubs, players, staff, hidden_female_clubs = exclude_female_clubs(clubs, players, staff)
                 for club in clubs:
                     club['club_uid'] = club['uid']
@@ -413,28 +436,17 @@ class Scout:
                     notes.append(f'Estádios indisponíveis: {exc}')
                 progress('Lendo ligas e competições…')
                 competitions = []
-                membership = {}
                 try:
-                    name_file = Path(__file__).parent / 'competition-names.csv'
-                    names = fmsave.read_competition_names(name_file) if name_file.exists() else {}
-                    competition_map = {c['id']: c for c in records(save.competitions())}
-                    for table in records(save.league_tables()):
-                        competition = competition_map.get(table['competition_id'], {})
-                        database_id = competition.get('database_id')
-                        key = f'db:{database_id}' if database_id is not None else f'save:{table["competition_id"]}'
-                        linked = [r for r in table['rows'] if r['club_uid'] is not None and r.get('team_slot') == 0]
-                        if not linked:
-                            continue
-                        for entry in linked:
-                            membership.setdefault(entry['club_uid'], set()).add(key)
-                        if not any(c['key'] == key for c in competitions):
-                            preview = ', '.join((r.get('club_short_name') or r.get('club_name') or str(r['club_uid'])) for r in linked[:3])
-                            competitions.append({'key': key, 'name': names.get(database_id),
-                                                 'preview': preview, 'database_id': database_id})
+                    names = fmsave.read_competition_names(Path(__file__).parent / 'league-names.csv')
+                    competitions = club_league_fields(clubs, records(save.competitions()),
+                                                     records(save.league_tables()), names)
                 except (fmsave.FmsaveError, OSError, ValueError) as exc:
-                    notes.append(f'Filtro de liga indisponível: {exc}')
+                    notes.append(f'Ligas indisponíveis: {exc}')
+                for row in players + staff:
+                    club = club_index.get(row.get('club_uid'), {})
+                    row['league_key'] = club.get('league_key')
+                    row['league_name'] = club.get('league_name')
                 for row in players + staff + clubs:
-                    row['competition_keys'] = sorted(membership.get(row.get('club_uid'), ()))
                     nationality_fields(row)
                     row['club_nation_name'] = NATION_NAMES.get(row.get('club_nation_id'))
                     row['nation_region'] = NATION_REGIONS.get(row.get('nation_id'))
@@ -448,6 +460,8 @@ class Scout:
                         'build': save.info.build, 'managed': managed,
                         'counts': {'players': len(players), 'staff': len(staff), 'clubs': len(clubs)},
                         'hidden_female_clubs': hidden_female_clubs,
+                        'league_clubs_count': sum(c.get('league_key') is not None for c in clubs),
+                        'staff_roles_count': sum(s.get('staff_role_key') != 'unknown' for s in staff),
                         'staff_skills_count': sum(s.get('attribute_sum') is not None for s in staff),
                         'warnings': notes + [str(w.message) for w in captured],
                         'ability_status': fmsave.field_status(fmsave.Player, 'ability.current')}

@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from scout import SUM_FIELDS, GOALKEEPING, NATION_NAMES, NATION_REGIONS, EU_NATIONS, attribute_sum, enrich, filter_rows, club_squads, exclude_female_clubs, staff_fields, club_stadium_fields
+from scout import SUM_FIELDS, GOALKEEPING, NATION_NAMES, NATION_REGIONS, EU_NATIONS, attribute_sum, enrich, filter_rows, club_squads, exclude_female_clubs, staff_fields, club_stadium_fields, club_league_fields
 from presets import Presets, validate_filter
 
 
@@ -19,6 +19,26 @@ def player(uid=1, level=10, **changes):
 
 
 class ScoutTests(unittest.TestCase):
+    def test_league_names_use_only_named_national_competitions_and_primary_team(self):
+        clubs=[{'uid':1},{'uid':2},{'uid':3},{'uid':4}]
+        competitions=[{'id':7,'database_id':11},{'id':8,'database_id':200},{'id':9,'database_id':22}]
+        tables=[{'competition_id':7,'rows':[{'club_uid':1,'team_slot':0},{'club_uid':2,'team_slot':1},{'club_uid':4,'team_slot':0}]},
+                {'competition_id':8,'rows':[{'club_uid':3,'team_slot':0}]},
+                {'competition_id':9,'rows':[{'club_uid':4,'team_slot':0}]}]
+        options=club_league_fields(clubs,competitions,tables,{11:'Premier League',22:'Bundesliga'})
+        self.assertEqual(options,[{'key':'db:11','name':'Premier League'}])
+        self.assertEqual(clubs[0]['league_name'],'Premier League')
+        self.assertTrue(all(c['league_key'] is None for c in clubs[1:]))
+        self.assertEqual(filter_rows(clubs,{'kind':'clubs','league':'db:11','sort':'league_name'}),[clubs[0]])
+
+    def test_exact_staff_roles_can_be_combined_and_saved_without_using_areas(self):
+        rows=[{'uid':1,'staff_role_key':'manager'},{'uid':2,'staff_role_key':'director_of_football'},{'uid':3,'staff_role_key':'unknown'}]
+        self.assertEqual([r['uid'] for r in filter_rows(rows,{'kind':'staff','staff_role':'manager,director_of_football','sort':'name'})],[1,2])
+        preset={'name':'Cargos','kind':'staff','filters':{'staff_role':'manager,director_of_football'}}
+        validate_filter(preset)
+        for changes in ({'kind':'players'},{'filters':{'staff_role':'scout'}}):
+            with self.assertRaises(ValueError):validate_filter({**preset,**changes})
+
     def test_stadium_home_link_is_not_ownership_and_ambiguous_links_are_absent(self):
         clubs = [{'uid': 1}, {'uid': 2}, {'uid': 3}]
         club_stadium_fields(clubs, [

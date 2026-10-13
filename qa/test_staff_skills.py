@@ -29,17 +29,19 @@ class StaffSkillsTests(unittest.TestCase):
         self.assertEqual(skill_values(bytes([73]*26))['motivating'], 15)
         self.assertIsNone(skill_values(b'')['motivating'])
         self.assertIsNone(skill_values(bytes([101]*26))['motivating'])
-        self.assertEqual(read_staff_skills(bytes(self.block), [self.member], self.layout)[123], values)
+        skills, selectors = read_staff_skills(bytes(self.block), [self.member], self.layout)
+        self.assertEqual(skills[123], values)
+        self.assertEqual(selectors, {123:457})
 
     def test_rejects_mismatched_identity_ability_preferences_and_invalid_blocks(self):
         for offset, value in [(8,124),(12,9),(21,101),(34,0),(35,9),(61,0)]:
             block = self.block.copy();block[offset] = value
-            self.assertEqual(read_staff_skills(bytes(block), [self.member], self.layout), {})
-        self.assertEqual(read_staff_skills(bytes(self.block[:86]), [self.member], self.layout), {})
-        self.assertEqual(read_staff_skills(bytes(self.block), [{**self.member,'is_human_manager':True}], self.layout), {})
+            self.assertEqual(read_staff_skills(bytes(block), [self.member], self.layout), ({}, {}))
+        self.assertEqual(read_staff_skills(bytes(self.block[:86]), [self.member], self.layout), ({}, {}))
+        self.assertEqual(read_staff_skills(bytes(self.block), [{**self.member,'is_human_manager':True}], self.layout), ({}, {}))
 
     def test_duplicate_matching_blocks_are_not_assigned_arbitrarily(self):
-        self.assertEqual(read_staff_skills(bytes(self.block)*2, [self.member], self.layout), {})
+        self.assertEqual(read_staff_skills(bytes(self.block)*2, [self.member], self.layout), ({}, {}))
 
 
 if __name__ == '__main__':unittest.main()

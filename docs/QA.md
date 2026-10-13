@@ -84,3 +84,18 @@ Sem confirmação externa de CA/PA, validação de cada campo no jogo, importaç
 A soma profissional antes indisponível passou a usar 19 competências experimentais; personalidade continua separada. O FM aberto não foi usado. Não há confirmação visual no jogo na mesma data do save, nem cobertura de todos os atributos/cargos do staff. Peso, liga atual, treino/formação/academia permanecem pendentes.
 
 A versão recompilada abriu o COR no aplicativo nativo e exibiu a coluna Soma de habilidades (19), Guardiola 250 e o campo Soma mín. com faixa 19–380. A API dessa instalação confirmou as mesmas contagens e os arquivos empacotados coincidem byte a byte com o código validado. SHA-256 do COR antes/depois da leitura nativa: `69c685db1ddd954386691909c987307440581f9b3621fb68825f7752fa8c89cc`. Assinatura `codesign --verify --deep --strict` e Info.plist válidos após executar o app. Assinatura local, sem notarização; pacote depende da .venv do projeto.
+
+## Cargos por assento e ligas parciais — 13/10/2026
+
+35 testes Python passaram e 22 fluxos Chromium passaram no COR, sem erros de console. Novos testes verificam truncamento dos assentos, selector/UID, contrato no clube correto, codificação UTF-8, sentinels e ambiguidades; seleção/salvamento de cargos; liga nacional nomeada somente para a equipe principal, sem copas/equipes secundárias e sem escolher entre dois vínculos. A interface exercitou cargo por nome com seleção múltipla, Guardiola como treinador principal e Marcelo Paz como diretor de futebol, liga Premier League propagada ao staff, filtro de clubes com 20 clubes e coluna Liga; Corinthians mostra Liga não lida.
+
+Probe independente da integração, em cópia temporária do COR: 2.123 treinadores principais, 213 diretores de futebol, 1 treinador humano e 8.048 registros de cargo não identificado; 150 clubes com liga, em oito campeonatos. Soma profissional permanece disponível em 10.333 registros. O SHA-256 do original permaneceu igual antes/depois. Nomes das 56 divisões foram conferidos com a seção PT-BR do arquivo de idioma instalado. Nenhuma tela/processo do FM foi usado. Cargos/ligas permanecem experimentais e parciais; treino/base continuam indisponíveis.
+
+O app nativo recompilado abriu COR e mostrou Treinador principal para Guardiola; a API da mesma instalação confirmou Premier League, 2.337 cargos identificados (inclui o treinador humano) e 150 clubes com liga. Os arquivos do app são idênticos ao código validado; assinatura `codesign --verify --deep --strict` e Info.plist válidos depois da execução. O SHA-256 do COR continua `69c685db1ddd954386691909c987307440581f9b3621fb68825f7752fa8c89cc`.
+
+Revisão antislop durante a construção, no escopo desta alteração:
+
+- Hard Gate PASS: captura local staff mostra nomes/cargos, ausência explícita e liga por nome; liga desconhecida do COR não é preenchida e os campos experimentais têm ressalva. Testes rejeitam liga de copa/equipe secundária e cargo de outro clube.
+- Purpose Gate PASS: cargo e liga reutilizam os seletores pesquisáveis e a configuração de colunas existentes, para atender aos critérios de recrutamento pedidos; nenhuma decoração ou etapa nova.
+- Liveliness PASS: direção visual 1/1/1 de DESIGN.md preservada, com tabela compacta, números alinhados e perfil lateral; captura staff revisada e testes sem overflow global de 390 a 1280 px.
+- Craftsmanship PASS: 35 testes, 22 fluxos, zero erros de console, filtros por nome/seleção múltipla e layouts persistentes; aplicativo nativo assinado, save original preservado. Limites de cargo/liga e ausência de treino/base são documentados. VoiceOver completo e conferência no FM não foram exercitados.
