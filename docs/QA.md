@@ -74,3 +74,13 @@ Sem confirmação externa de CA/PA, validação de cada campo no jogo, importaç
 - Purpose Gate PASS: reutilizados os seletores existentes; nenhum efeito, ícone ou padrão decorativo adicionado.
 - Liveliness PASS: mantida a direção de `DESIGN.md`, ENERGY 1 / RHYTHM 1 / MOTION 1, tabela como foco e campo como seleção de posições.
 - Craftsmanship PASS no escopo alterado: código interno não é texto de busca; campos indisponíveis não simulam dados; 25 testes, build assinado localmente e 17 fluxos de interface. Conversão salarial exige referência por carreira e moeda. Categoria desconhecida não vira masculino/feminino por nome ou ausência de elenco; funções exatas e soma profissional de staff ficam explicitamente indisponíveis. VoiceOver completo e vínculo da liga atual continuam fora da cobertura confirmada.
+
+## Habilidades profissionais, altura e estádio — 13/10/2026
+
+30 testes Python passaram: validação de identidade/CA/PA/preferências/sentinel/limites dos bytes profissionais, rejeição de headers duplicados e humanos, conversão 1–100 para 1–20, composição das 19 competências, filtros/ordenação e teto 380, altura e associação do estádio pelos jogos em casa sem confundir propriedade.
+
+20 fluxos Chromium passaram no COR, com zero erros de console. Além dos fluxos anteriores, foram exercitados perfil, filtro e comparação das competências profissionais; colunas financeiras/capacidades do clube; altura em cm como coluna ordenável e filtro. A API conferiu Nikolić com motivação 16, avaliação de capacidade/potencial 12/10, defesa 16 e soma 207, reproduzindo a referência externa descrita em `STAFF_READER_RESEARCH.md`. Metadados: 10.333 registros de staff com soma completa, de 10.385 visíveis. Corinthians: 48.905 lugares sentados e expansão 70.000. Layout e salários persistiram ao recarregar o save e a interface.
+
+A soma profissional antes indisponível passou a usar 19 competências experimentais; personalidade continua separada. O FM aberto não foi usado. Não há confirmação visual no jogo na mesma data do save, nem cobertura de todos os atributos/cargos do staff. Peso, liga atual, treino/formação/academia permanecem pendentes.
+
+A versão recompilada abriu o COR no aplicativo nativo e exibiu a coluna Soma de habilidades (19), Guardiola 250 e o campo Soma mín. com faixa 19–380. A API dessa instalação confirmou as mesmas contagens e os arquivos empacotados coincidem byte a byte com o código validado. SHA-256 do COR antes/depois da leitura nativa: `69c685db1ddd954386691909c987307440581f9b3621fb68825f7752fa8c89cc`. Assinatura `codesign --verify --deep --strict` e Info.plist válidos após executar o app. Assinatura local, sem notarização; pacote depende da .venv do projeto.

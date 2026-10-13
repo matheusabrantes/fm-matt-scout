@@ -40,7 +40,7 @@ Todas as listas têm uma coluna Nº à esquerda, de acordo com os filtros e a or
 
 Clubes femininos identificados por IDs de uma referência local são ocultados, incluindo seus jogadores e staff vinculados. Categoria desconhecida permanece visível. No COR foram identificados 1.017, preservando os masculinos homônimos. Sem elenco lido, a contagem mostra Nenhum jogador lido. A referência e sua cobertura parcial estão em `docs/CLUB_GENDERS.md`.
 
-Staff tem colunas Função, Área do staff e Soma de habilidades. O filtro de área permite busca e seleção múltipla nas listas médica, comissão técnica e recrutamento. Cargo exato e soma profissional ainda não têm dados suficientes: aparecem como Cargo não identificado e Não disponível. Preferências e personalidade não são somadas como habilidades profissionais.
+Staff tem colunas Função, Área do staff e Soma de habilidades. O filtro de área permite busca e seleção múltipla nas listas médica, comissão técnica e recrutamento. 19 habilidades profissionais experimentais estão disponíveis no perfil, nas colunas, nos filtros e na comparação. Soma das 19, peso igual, máximo 380; ausente se algum campo não foi lido. Cargo exato ainda aparece como Cargo não identificado. Preferências e personalidade ficam fora da soma. Fontes/limites em `docs/STAFF_READER_RESEARCH.md`.
 
 Na pesquisa, Salvar filtro guarda os critérios atuais com um nome. Exportar filtros cria um JSON portátil; Importar filtros restaura esses critérios, incluindo clube, posição, elenco, idade, nacionalidade, competição, contrato, atributos e ordenação. Arquivos inválidos são rejeitados sem substituir os filtros existentes. IDs de competições que só existem naquela carreira podem não funcionar em outro save.
 
@@ -90,3 +90,5 @@ O teste de UI usa o Playwright e o Chromium já disponíveis no ambiente de dese
 - [Critérios de confiança do leitor](https://rhiever.github.io/fmsave/guides/trust.html)
 
 Projeto independente, sem vínculo com Sports Interactive, SEGA ou os autores do Genie Scout.
+
+Altura em centímetros tem coluna ordenável e filtros mínimo/máximo, também salvos nos filtros táticos. Peso em kg ainda sem leitura confiável. Clubes têm colunas de saldo, transferências restantes, orçamento salarial e capacidades de lugares sentados/expansão do estádio quando há um único vínculo pelos jogos em casa. Ausência de dados permanece explícita.
