@@ -5,7 +5,7 @@ Aplicativo local de scouting para macOS, inspirado no fluxo do Genie Scout. Vers
 ## Abrir neste Mac
 
 ```sh
-open "/Users/matheus/Library/Application Support/FM Matt Scout/Application/FM Matt Scout.app"
+open "/Applications/FM Matt Scout.app"
 ```
 
 Para reconstruir após mudar código:
@@ -16,7 +16,7 @@ Para reconstruir após mudar código:
 
 O build usa Python 3.12 instalado em `/opt/homebrew/bin/python3.12`, a `.venv` deste projeto e as ferramentas Swift do macOS. Este aplicativo local depende da `.venv` no caminho atual do projeto. Mover o projeto exige reconstruir. Um instalador independente, assinado para distribuição e notarizado ainda não foi preparado.
 
-A cópia executável fica em Application Support, fora do provedor de arquivos da pasta do projeto, que recria metadados incompatíveis com a verificação de assinatura de bundles. O ZIP em `dist/FM Matt Scout.zip` preserva uma cópia sem esses metadados; ele mantém a mesma dependência da `.venv`. Feche a instância antiga antes de abrir a atualizada.
+A compilação instala e atualiza uma única cópia em Aplicativos, disponível também pela busca do macOS. Feche o app antes de reconstruir. A instalação fica fora do provedor de arquivos da pasta do projeto, que recria metadados incompatíveis com a verificação de assinatura de bundles. O ZIP em `dist/FM Matt Scout.zip` preserva uma cópia sem esses metadados; ele mantém a mesma dependência da `.venv`. Os dados e preferências continuam em `~/Library/Application Support/FM Matt Scout/`.
 
 ## Fluxo
 
