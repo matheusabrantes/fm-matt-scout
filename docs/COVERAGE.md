@@ -53,6 +53,7 @@ Pendentes: demais cargos atuais confiáveis, gênero das pessoas, regen, naciona
 |---|---|
 | Nome; país; divisão; reputação | Nome/reputação e país funcionais. Liga com cobertura parcial pela tabela, descrita acima. |
 | Saldo; transferências restantes; orçamento salarial | Perfil, filtros e colunas ordenáveis nos clubes com dados financeiros decodificados. Data exposta no perfil. Saldo/transferências nas unidades do save; orçamento salarial usa a configuração de moeda/período dos salários. |
+| Dívidas e empréstimos financeiros | Pendente. Três contratos iniciais do COR foram localizados e ligados à equipe principal, mas saldo restante, juros, dívida líquida e dívida de transferências ainda não têm decoder validado. Não substituir por saldo de caixa, fluxo mensal de transferências ou valor original. Investigação em `CLUB_DEBT_RESEARCH.md` e `DEBT_READERS_RESEARCH.md`. |
 | Médias CA/PA/idade; número de jogadores | Funcional, ordenável, cobertura por indicador. Equipe principal ou todos os vinculados. |
 | Base/reservas | Incluídas em Todos, quando vinculadas pelo leitor. Os nomes exatos das categorias secundárias estão pendentes. |
 | Masculino/feminino | Femininos identificados por referência local de IDs são ocultados; 1.017 no COR. Masculinos conhecidos e categoria desconhecida permanecem. Sem classificação por nome, faixa de ID ou ausência de elenco. Cobertura parcial, documentada em `CLUB_GENDERS.md`. |
