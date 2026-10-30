@@ -36,7 +36,7 @@ class ScoutTests(unittest.TestCase):
         self.assertEqual([r['uid'] for r in filter_rows(rows,{'kind':'staff','staff_role':'manager,director_of_football','sort':'name'})],[1,2])
         preset={'name':'Cargos','kind':'staff','filters':{'staff_role':'manager,director_of_football'}}
         validate_filter(preset)
-        for changes in ({'kind':'players'},{'filters':{'staff_role':'scout'}}):
+        for changes in ({'kind':'players'},{'filters':{'staff_role':'bogus_role'}}):
             with self.assertRaises(ValueError):validate_filter({**preset,**changes})
 
     def test_stadium_home_link_is_not_ownership_and_ambiguous_links_are_absent(self):

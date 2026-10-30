@@ -1,10 +1,10 @@
-# Atributos profissionais do staff: investigação do leitor
+# Staff: atributos profissionais e cargos
 
 Verificado em 13/10/2026. Escopo: leitura do arquivo `.fm`, sem abrir o FM, ler memória do processo ou instalar dependências.
 
 ## Resultado
 
-Há uma base pública para avançar nos atributos profissionais. O `fmsave` instalado já localiza um bloco de 26 bytes que não publica como atributos; o leitor Rust `gilet` fornece nomes e conversão para esse mesmo bloco. Cargos exatos continuam sem decodificação demonstrada nas fontes examinadas.
+Há uma base pública para avançar nos atributos profissionais. O `fmsave` instalado já localiza um bloco de 26 bytes que não publica como atributos; o leitor Rust `gilet` fornece nomes e conversão para esse mesmo bloco. Na consulta inicial, as fontes examinadas não demonstravam a decodificação de todos os cargos. O avanço no contrato atual está na seção de 29/10/2026 ao final deste documento.
 
 O [changelog atual do fmsave](https://github.com/rhiever/fmsave/blob/34d38551ca4904ae1ef8ffd32f9cf8fb3882385e/CHANGELOG.md) e a [publicação PyPI](https://pypi.org/project/fmsave/0.5.10/) confirmam 0.5.10 como versão mais recente nesta consulta. A versão não adiciona habilidades profissionais completas. Seu [modelo de staff](https://github.com/rhiever/fmsave/blob/34d38551ca4904ae1ef8ffd32f9cf8fb3882385e/src/fmsave/models/staff.py) publica apenas adaptabilidade como atributo avaliado; as preferências táticas representam comportamento, não competência.
 
@@ -61,3 +61,36 @@ O adaptador `staff_skills.py` procura headers com UID duplicado, valida o layout
 No COR, antes da exclusão de clubes femininos, 10.337 registros receberam as competências. Após a exclusão: **10.333 de 10.385** registros visíveis têm soma completa. Os demais ficam indisponíveis. Nikolić teve soma 207; Fradley, 185; Guardiola, 250. A soma contém somente as 19 competências nomeadas de `SKILLS`, com pesos iguais e máximo 380. Não pretende incluir todos os atributos do FM ou reproduzir ratings proprietários.
 
 Estádios vêm de `save.stadiums()` e de `home_club_uids`, associação pelos jogos em casa; `owner_club_uid` não é usado como estádio do clube. Mais de um estádio associado deixa os valores ausentes. Lugares sentados e capacidade de expansão são medidas separadas, não capacidade total. No Corinthians masculino (UID interno 318), o COR entregou 48.905 lugares sentados e expansão 70.000. Não houve nome de estádio decodificado no levantamento.
+
+## Cargos atuais: avanço em 29/10/2026
+
+O contrato do staff tem um byte de cargo imediatamente depois do salário semanal de quatro bytes, em `tag + 21` no layout `26.3.2+2329565`. É um campo diferente de `r4` no bloco de habilidade. A leitura de COR, salvo em 30/12/2025, mostra por que essa diferença importa: Célio Silva tem `r4 = 80`, mas o contrato contém `14`; William Batista tem `r4 = 2`, mas o contrato contém `16`; Bruno Gorgatte tem `r4 = 0`, mas o contrato contém `50`.
+
+A nomenclatura dos códigos comuns foi comparada com o [`jobName` do leitor aberto FM AI Assistent](https://github.com/JelmerBouma1985/fm-ai-assistent/blob/master/src/main/java/com/github/fmaiassistent/exporter/StaffExporter.java). Esse projeto lê memória; seu [offset de cargo em RAM](https://github.com/JelmerBouma1985/fm-ai-assistent/blob/master/src/main/java/com/github/fmaiassistent/memory/StaffRecordLayout.java) **não** foi usado como offset do save. A posição no arquivo foi identificada e verificada separadamente. O perfil aberto de Nicolas Jover no FM, 44 anos, nascido em 02/04/1981 e no Arsenal, confirmou `22` como Preparador de Lances de Bola Parada; o mapa de RAM chama esse código incorretamente de Performance Analyst. Por isso, códigos sem rótulo demonstrado continuam ausentes e o mapa inclui apenas códigos encontrados nesta leitura.
+
+O código `62` foi conferido em dois perfis abertos: Raony, 36 anos, 19/03/1989, Corinthians, contrato até 31/12/2027; e Toni Tapalović, 45 anos, 10/10/1980, Barcelona, contrato até 30/06/2027. Nos dois, o cargo exibido abaixo do clube é literalmente **Coordenador de Análise de Recrutamento**. A categoria profissional abaixo do nome e o histórico apresentam títulos diferentes; para Raony a categoria é Analista de Desempenho, enquanto Toni tem Treinador Adjunto Principal e histórico de treino de goleiros. O app segue o cargo do vínculo atual exibido pelo FM, sem reinterpretá-lo pela categoria, pela biografia, pelo departamento ou pela profissão fora do jogo. Não foi determinado se essa divergência é uma particularidade de tradução ou dos dados da carreira.
+
+O adaptador `read_staff_contract_roles` usa o localizador de contratos do `fmsave`, exige o header da própria pessoa, decodifica o contrato completo e confere UID, clube, equipe, salário e datas com o registro de staff já lido. Contratos futuros ou expirados são rejeitados. Mais de um contrato correspondente deixa o cargo ausente. Um código desconhecido ou contrato sem termos também não recebe um nome. A integração deve manter a verificação do build já usada para os assentos; não estender este offset a outro layout sem nova prova.
+
+A checagem independente pelos assentos produziu estes resultados no COR atual:
+
+- Dos 2.122 assentos de treinador, 2.110 têm código `16` no contrato. Os outros 12 têm funções acumuladas de diretor, proprietário ou presidente.
+- Dos 213 assentos de diretor de futebol, 211 têm código `10` e dois têm código `6` (diretor).
+- Os departamentos separam os códigos de forma consistente: fisioterapeutas, cientistas e chefias médicas aparecem na lista médica; olheiros, chefias e diretor técnico, na lista de recrutamento; preparadores, auxiliares e treinadores, na lista técnica.
+
+Por isso, os assentos próprios continuam tendo prioridade quando uma pessoa acumula funções. O código `16` do contrato significa Treinador, sem afirmar que é o principal: William Batista foi conferido no FM e trabalha na base. O novo decoder de contratos identificou **9.850 de 10.541 registros** de staff antes da exclusão de clubes femininos, em **25 cargos distintos**, já rejeitando contratos futuros/expirados. Assentos e treinador humano são integrados separadamente. Essa contagem não é uma validação visual de cada profissional. Os códigos `58` (Renan Bloise, Analista de Recrutamento) e `60` (Guilherme Lyra, Analista de Desempenho) foram conferidos na busca do FM e ainda aguardam a confirmação do perfil aberto; outros registros não têm contrato completo ou associação única demonstrada. Não usar `r4`, o maior atributo ou uma preferência para preencher os restantes.
+
+A leitura foi feita de cópia temporária, conferindo tamanho e mtime do save original antes e depois. Os testes do adaptador cobrem a divergência entre `r4` e o contrato, correspondências de clube/equipe/UID/salário/datas, duplicidade, contrato incompleto e código desconhecido.
+
+Na extração dos pendentes em 30/10/2026 (mesmo COR de 30/12/2025), os 688
+registros sem cargo se repartem em 627 sem contrato lido, 57 sem associação ao
+header de habilidades e quatro contratos futuros. Os seis do Corinthians são
+Eures Soncini Facci, Giulio Cesare Lopes Ferriello, João Marcelo, Leandro Correia
+dos Santos, Michel Youssef Muniz Domingos e Ricardo Galotti. Os nomes completos
+de Eures e Ricardo não retornaram resultado na busca global do FM; isso não
+prova ausência de vínculo nem permite nomear a função. O perfil aberto de
+Adryan Almeida, Guarani, 46 anos, 09/06/1979, confirmou o cargo atual Analista de
+Desempenho abaixo do clube. Ele integra o grupo sem header associado; a categoria
+profissional abaixo do nome diz Analista de Recrutamento, reforçando que a
+categoria não substitui o cargo do contrato. Nenhum nome foi usado como exceção
+fixa no mapa de cargos. A lista completa ficou em CSV local, fora do Git.

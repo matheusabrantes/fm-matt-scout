@@ -1,9 +1,73 @@
-"""Experimental manager/director seats, checked against the staff's own club contract."""
+"""Staff seats and current contract roles, with independent ownership checks."""
 import re
 import struct
 
-ROLES = {'manager': 'Treinador principal', 'director_of_football': 'Diretor de futebol',
-         'human_manager': 'Treinador (humano)', 'unknown': 'Cargo não identificado'}
+from fmsave.readers.staff import (
+    _discovery_pattern, _header_reader, _header_values, locate_contracted_header,
+)
+
+CONTRACT_ROLES = {
+    2: ('coach', 'Preparador'),
+    4: ('chairperson', 'Presidente da direção'),
+    6: ('director', 'Diretor'),
+    10: ('director_of_football', 'Diretor de futebol'),
+    12: ('physiotherapist', 'Fisioterapeuta'),
+    14: ('scout', 'Olheiro'),
+    16: ('team_manager', 'Treinador'),
+    20: ('assistant_manager', 'Auxiliar técnico'),
+    22: ('set_piece_coach', 'Preparador de bolas paradas'),
+    26: ('fitness_coach', 'Preparador físico'),
+    34: ('goalkeeping_coach', 'Preparador de goleiros'),
+    38: ('club_doctor', 'Médico do clube'),
+    40: ('head_sports_science', 'Chefe de ciência esportiva'),
+    44: ('chief_scout', 'Chefe de olheiros'),
+    46: ('doctor', 'Médico'),
+    48: ('sports_scientist', 'Cientista esportivo'),
+    50: ('head_physiotherapist', 'Chefe de fisioterapia'),
+    58: ('recruitment_analyst', 'Analista de recrutamento'),
+    60: ('performance_analyst', 'Analista de desempenho'),
+    62: ('chief_recruitment_analyst', 'Coordenador de análise de recrutamento'),
+    64: ('head_youth_development', 'Diretor de formação'),
+    66: ('owner', 'Proprietário'),
+    70: ('president', 'Presidente'),
+    86: ('loan_manager', 'Gestor de empréstimos'),
+    88: ('technical_director', 'Diretor técnico'),
+}
+ROLES = {key: label for key, label in CONTRACT_ROLES.values()}
+ROLES.update(manager='Treinador principal', human_manager='Treinador (humano)', unknown='Cargo não identificado')
+
+
+def read_staff_contract_roles(game_db, member_by_selector, decoder, layouts):
+    candidates = {}
+    reader = _header_reader(layouts.staff)
+    for hit in _discovery_pattern(layouts.staff, layouts.contracts, layouts.team_lists).finditer(game_db):
+        offset = hit.start()
+        if offset + 21 >= len(game_db):
+            continue
+        selector = struct.unpack_from('<I', game_db, offset + layouts.contracts.selector_offset)[0]
+        members = member_by_selector.get(selector, ())
+        if not members:
+            continue
+        header = locate_contracted_header(game_db, selector - 1, offset, layouts.staff)
+        if header is None:
+            continue
+        uid, _ = _header_values(game_db, header, reader, layouts.staff)
+        record = decoder.decode_chain_record(game_db, offset)
+        if (not record[6] or record[4] is None or record[4] > decoder.clock
+                or (record[5] is not None and record[5] < decoder.clock)):
+            continue
+        matches = [member for member in members
+                   if member.get('has_contract') and member['uid'] == uid
+                   and (member.get('club_uid'), member.get('team_id'), member.get('wage'),
+                        member.get('contract_start'), member.get('contract_end'))
+                   == (record[0], record[2], record[3],
+                       record[4].isoformat() if record[4] is not None else None,
+                       record[5].isoformat() if record[5] is not None else None)]
+        if len(matches) == 1:
+            # The job belongs to this contract; ability-block r4 does not identify the current job.
+            candidates.setdefault((uid, record[0]), []).append(game_db[offset + 21])
+    return {key: CONTRACT_ROLES[codes[0]][0] for key, codes in candidates.items()
+            if len(codes) == 1 and codes[0] in CONTRACT_ROLES}
 
 
 def read_staff_roles(game_db, clubs, spans, member_by_selector, long_name_offset):

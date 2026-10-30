@@ -8,7 +8,7 @@ from pathlib import Path
 
 from scout import GROUPS, POSITIONS, RANGES, RELEASE_KINDS, REGIONS, STAFF_AREAS, STAFF_ROLES
 
-FIELDS = {'search', 'position', 'age_min', 'age_max', 'ca_min', 'pa_min', 'sum_min',
+FIELDS = {'search', 'position', 'age_min', 'age_max', 'ca_min', 'pa_min', 'sum_min', 'availability',
           'rating_min', 'club', 'nation', 'league', 'contract_before', 'contract_after', 'free', 'sort', 'direction',
           'based', 'nation_region', 'based_region', 'eu_national', 'within_shortlist', 'no_contract', 'contract_kind', 'squad_status', 'release_kind', 'has_release', 'traits', 'squad_scope', 'squad','staff_area','staff_role'}
 FIELDS.update(f'{field}_{bound}' for field in RANGES for bound in ('min', 'max'))
@@ -37,6 +37,9 @@ def validate_filter(preset):
             raise ValueError('Valor de filtro muito longo.')
         if not value:
             continue
+        if key == 'availability' and (kind != 'players' or value not in
+                ('free', 'expiring_6', 'expiring_12', 'transfer_listed', 'loan_listed')):
+            raise ValueError('Filtro de disponibilidade inválido.')
         if key in ('nation_region','based_region'):
             if not set(value.split(',')).issubset(REGIONS):
                 raise ValueError('Região inválida.')
@@ -82,7 +85,7 @@ def validate_filter(preset):
             raise ValueError('Escopo de elenco inválido.')
         if key == 'squad' and value not in ('first','all','other'):
             raise ValueError('Equipe inválida.')
-        if key == 'sort' and value not in ('name', 'age', 'club_name', 'ca', 'pa', 'attribute_sum', 'rating', 'reputation', 'nation_id', 'eu_national', 'goalkeeping_sum', 'ability_difference', 'rep_home', 'rep_current', 'rep_world', 'wage', 'value', 'release_fee', 'ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot','staff_area','staff_role','height_cm','balance','transfer_budget_remaining','wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity','league_name') and value not in {f'attr_{a}' for a in ATTRIBUTES}:
+        if key == 'sort' and value not in ('name', 'age', 'club_name', 'ca', 'pa', 'attribute_sum', 'rating', 'reputation', 'nation_id', 'eu_national', 'goalkeeping_sum', 'ability_difference', 'rep_home', 'rep_current', 'rep_world', 'wage', 'value', 'release_fee', 'release_fee_domestic', 'release_fee_foreign', 'ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot','staff_area','staff_role','height_cm','balance','transfer_budget_remaining','wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity','league_name') and value not in {f'attr_{a}' for a in ATTRIBUTES}:
             raise ValueError('Ordenação inválida.')
         if key == 'direction' and value not in ('asc', 'desc'):
             raise ValueError('Direção inválida.')

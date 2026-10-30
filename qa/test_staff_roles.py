@@ -54,3 +54,63 @@ class StaffRoleTests(unittest.TestCase):
         self.assertEqual(self.read(self.manager+second,members),{})
         raw,span,_=self.director()
         self.assertEqual(self.read(raw+self.manager,spans=[span]),{})
+
+
+class ContractRoleTests(unittest.TestCase):
+    def setUp(self):
+        from datetime import date
+        from fmsave.readers.staff import find_staff_layouts
+        self.layouts = find_staff_layouts({}, '26.3.2+2329565')
+        self.member = {'uid':123,'club_uid':101,'has_contract':True,'team_id':77,'wage':500,
+                       'contract_start':'2025-01-01','contract_end':'2026-06-30'}
+        self.raw = bytearray(190)
+        struct.pack_into('<III',self.raw,0,456,123,123);self.raw[12]=1
+        struct.pack_into('<Hh',self.raw,21,100,150);self.raw[34]=12
+        self.raw[35:61]=bytes([10]*26);self.raw[61:87]=bytes([100]*26)
+        self.raw[150:154]=self.layouts.contracts.tag
+        struct.pack_into('<II',self.raw,155,457,77)
+        self.raw[171]=14
+        self.record=(101,'Club',77,500,date(2025,1,1),date(2026,6,30),True)
+        self.decoder=SimpleNamespace(clock=date(2025,6,1),
+                                     decode_chain_record=lambda raw,offset:self.record)
+
+    def read(self,raw=None,members=None):
+        from staff_roles import read_staff_contract_roles
+        return read_staff_contract_roles(bytes(self.raw if raw is None else raw),
+            {457:[self.member] if members is None else members},self.decoder,self.layouts)
+
+    def test_reads_current_contract_role_not_ability_role_byte(self):
+        self.raw[25]=80
+        self.assertEqual(self.read(),{(123,101):'scout'})
+        self.raw[171]=26
+        self.assertEqual(self.read(),{(123,101):'fitness_coach'})
+        self.raw[171]=16
+        self.assertEqual(self.read(),{(123,101):'team_manager'})
+        self.raw[171]=58
+        self.assertEqual(self.read(),{(123,101):'recruitment_analyst'})
+        self.raw[171]=60
+        self.assertEqual(self.read(),{(123,101):'performance_analyst'})
+        self.raw[171]=22
+        self.assertEqual(self.read(),{(123,101):'set_piece_coach'})
+        self.raw[171]=62
+        self.assertEqual(self.read(),{(123,101):'chief_recruitment_analyst'})
+
+    def test_requires_unique_owned_matching_current_contract(self):
+        for changes in ({'club_uid':102},{'uid':124},{'wage':501},{'team_id':78},
+                        {'contract_start':'2025-01-02'},{'contract_end':'2026-06-29'},
+                        {'has_contract':False}):
+            self.assertEqual(self.read(members=[{**self.member,**changes}]),{})
+        self.assertEqual(self.read(members=[self.member,self.member]),{})
+        self.assertEqual(self.read(self.raw+self.raw[150:]),{})
+        self.assertEqual(self.read(self.raw[:171]),{})
+        self.raw[171]=255
+        self.assertEqual(self.read(),{})
+        self.raw[171]=14
+        self.record=(*self.record[:6],False)
+        self.assertEqual(self.read(),{})
+
+    def test_future_or_expired_contract_does_not_supply_current_job(self):
+        from datetime import date
+        for clock in (date(2024,12,31),date(2026,7,1)):
+            self.decoder.clock=clock
+            self.assertEqual(self.read(),{})

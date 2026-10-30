@@ -11,21 +11,65 @@ const assert = require('node:assert/strict');
   let errors='',stdout='';child.stderr.on('data',data=>errors+=data.toString());
   const url=await new Promise((resolve,reject)=>{child.stdout.on('data',data=>{stdout+=data;const line=stdout.split('\n')[0];if(line.startsWith('http'))resolve(line);});child.on('exit',code=>reject(new Error(`Server exited ${code}: ${errors}`)));setTimeout(()=>reject(new Error('Server startup timed out')),15000).unref();});
   let browser;
-  try{browser=await chromium.launch({headless:true,executablePath:path.join(os.homedir(),'Library/Caches/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell')});}catch(error){child.kill('SIGTERM');throw error;}
+  try{browser=await chromium.launch({headless:true,executablePath:process.env.SCOUT_QA_BROWSER || chromium.executablePath()});}catch(error){child.kill('SIGTERM');throw error;}
+  try{
   const page=await browser.newPage({viewport:{width:1440,height:960},acceptDownloads:true});
   const consoleErrors=[],steps=[];
   page.on('pageerror',error=>consoleErrors.push(error.message));
   page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text());});
   const record=label=>{steps.push(label);process.stdout.write(label+'\n');};
-  async function settle(){await page.waitForTimeout(250);}
+  async function settle(){await page.waitForTimeout(250);await page.waitForFunction(()=>document.getElementById('workspace').getAttribute('aria-busy')!=='true');}
+  async function waitForSave() {
+    await page.waitForFunction(()=>{
+      const message=document.getElementById('message');
+      if(!message)return false;
+      if(!message.hidden&&message.classList.contains('error'))throw new Error(message.textContent);
+      return !document.getElementById('reload').disabled
+        &&document.getElementById('result-count').textContent.includes('jogadores')
+        &&document.querySelectorAll('#table tbody tr[data-uid]').length>0;
+    },null,{timeout:180000});
+  }
+  async function waitForRows(result) {
+    await page.waitForFunction(ids=>{
+      const rows=[...document.querySelectorAll('#table tbody tr[data-uid]')];
+      return document.getElementById('workspace').getAttribute('aria-busy')==='false'
+        &&rows.length===ids.length&&rows.every((row,index)=>row.dataset.uid===ids[index]);
+    },result.rows.map(row=>String(row.uid)));
+  }
   async function choose(id,search,value){await page.locator(`[data-picker-open="${id}"]`).click();await page.locator('#picker-search').fill(search);await page.locator(`[data-picker-value="${value}"]`).check();await page.locator('#picker-dialog [data-close="picker-dialog"]').first().click();}
-  try{
     await page.goto(url);
     await page.getByRole('button',{name:/Matheus Abrantes - COR\.fm/}).click();
-    await page.locator('#result-count').filter({hasText:'jogadores'}).waitFor({timeout:90000});
+    await waitForSave();
     const metadata=(await(await page.request.get(url+'api/status')).json()).meta;
     assert(metadata.staff_skills_count>10000);console.log('Staff com soma profissional:',metadata.staff_skills_count);
     record('Save COR carregado pela interface');
+    const quickTotals = {};
+    for (const availability of ['free','expiring_6','expiring_12','transfer_listed','loan_listed']) {
+      const response = page.waitForResponse(r=>r.url().includes('api/rows?') && r.url().includes(`availability=${availability}`));
+      await page.locator(`[data-availability="${availability}"]`).click();
+      const result = await (await response).json();
+      await waitForRows(result);
+      assert(result.total>0,availability);quickTotals[availability]=result.total;
+      assert.equal(await page.locator(`[data-availability="${availability}"]`).getAttribute('aria-pressed'),'true');
+      for(const row of result.rows) {
+        if(availability==='free')assert.equal(row.contract_end,null);
+        else if(availability.startsWith('expiring_')) {
+          const [y,m,d]=metadata.date.split('-').map(Number), months=availability==='expiring_6'?6:12;
+          const lastDay=new Date(Date.UTC(y,m+months,0)).getUTCDate();
+          const deadline=new Date(Date.UTC(y,m-1+months,Math.min(d,lastDay))).toISOString().slice(0,10);
+          assert(row.contract_end>=metadata.date && row.contract_end<=deadline);
+        }
+      }
+      if(availability.endsWith('_listed')) {
+        const profile=await(await page.request.get(url+`api/profile?kind=players&uid=${result.rows[0].uid}`)).json();
+        assert.equal(profile.row[availability],true);
+      }
+      record(`Atalho ${availability}: ${result.total} jogadores, resposta e linhas exibidas conferidas`);
+    }
+    assert(quickTotals.expiring_12>=quickTotals.expiring_6);
+    const allResponse=page.waitForResponse(r=>r.url().includes('api/rows?') && !r.url().includes('availability='));
+    await page.locator('[data-availability=""]').click();await waitForRows(await(await allResponse).json());
+    console.log(`Atalhos reais: ${quickTotals.free} livres, ${quickTotals.expiring_6} contratos até 6 meses, ${quickTotals.expiring_12} até 12 meses; data da carreira e limites inclusivos`);
     await page.waitForFunction(()=>document.querySelectorAll('#table tbody tr[data-uid]').length===100);
     const firstBatch=await page.locator('#table tbody tr[data-uid]').evaluateAll(list=>list.map(row=>row.dataset.uid));
     const beforeScroll=await page.locator('.table-scroll').evaluate(e=>{e.scrollTop=1500;return e.scrollTop;});
@@ -149,16 +193,17 @@ const assert = require('node:assert/strict');
     const document=JSON.parse(await fs.readFile(filterFile));assert.equal(document.presets[0].filters.club,'318');assert.equal(document.presets[0].filters.position,'DC');assert.equal(document.presets[0].filters.maxattr_injury_proneness,'10');
     await page.locator('#clear-search').click();assert.equal(await page.locator('#position').inputValue(),'');
     await page.locator('#apply-preset').click();await page.waitForFunction(()=>document.getElementById('position').value==='DC'&&document.getElementById('club').value==='318');
-    await page.locator('#preset-file').setInputFiles(filterFile);await settle();
-    await page.locator('#remove-preset').click();await settle();assert.equal(await page.locator('#preset option').count(),1);
+    await page.locator('#preset-file').setInputFiles(filterFile);await page.waitForFunction(()=>document.getElementById('message').textContent.includes('0 filtros importados.'));
+    await page.locator('#remove-preset').click();await page.waitForFunction(()=>document.querySelectorAll('#preset option').length===1);assert.equal(await page.locator('#preset option').count(),1);
     await page.locator('#clear-search').click();await page.locator('#advanced [data-close="advanced"]').first().click();
     record('Filtros: salvar, exportar JSON, restaurar, importar sem duplicar e excluir');
     await page.locator('#table th').nth(2).click({button:'right'});await page.locator('#columns-dialog').waitFor();
-    await page.locator('[data-column="attr_passing"]').check();await page.locator('[data-column="age"]').uncheck();await page.locator('#save-columns').click();
+    await page.locator('[data-column="attr_passing"]').check();for(const key of ['release_fee','release_fee_domestic','release_fee_foreign'])await page.locator(`[data-column="${key}"]`).check();await page.locator('[data-column="age"]').uncheck();await page.locator('#save-columns').click();
     await page.locator('#columns-dialog').waitFor({state:'hidden'});await page.locator('#table [data-sort="age"]').waitFor({state:'hidden'});
     assert.equal(await page.locator('#table [data-sort="age"]').count(),0);
     await page.locator('[data-sort="attr_passing"]').click();await settle();
-    record('Clique direito no cabeçalho: adicionar/remover colunas, ordenar por atributo e salvar layout');
+    for(const key of ['release_fee','release_fee_domestic','release_fee_foreign']){await page.locator(`[data-sort="${key}"]`).waitFor();const response=page.waitForResponse(r=>r.url().includes('api/rows?')&&r.url().includes(`sort=${key}`));await page.locator(`[data-sort="${key}"]`).click();await waitForRows(await(await response).json());}
+    record('Clique direito no cabeçalho: colunas de rescisão geral/nacional/internacional, ordenação por atributo e layout salvo');
     await page.locator('[data-watch]').first().click();await settle();
     await page.locator('[data-view="shortlist"]').click();await page.waitForFunction(()=>document.querySelectorAll('#table [data-watch]').length===1);
     await page.locator('#export').click();const listDownload=page.waitForEvent('download');await page.locator('#export-list-json').click();const listFile=path.join(temp,'list.json');await(await listDownload).saveAs(listFile);
@@ -172,8 +217,8 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('#table tbody .row-number').first().textContent(),'1');
     assert((await page.locator('#table [data-sort="attribute_sum"]').textContent()).includes('Soma de habilidades'));
     assert(Number(await page.locator('#table td[title^="Soma de 19"]').first().textContent())>0);
-    const pep=await(await page.request.get(url+'api/rows?kind=staff&search=Pep%20Guardiola&columns=staff_role,league_name')).json();
-    assert.equal(pep.rows[0].staff_role,'Treinador principal');assert.equal(pep.rows[0].league_name,'Premier League');
+    const arteta=await(await page.request.get(url+'api/rows?kind=staff&search=Mikel%20Arteta&columns=staff_role,league_name')).json();
+    assert.equal(arteta.rows[0]?.staff_role,'Treinador principal');assert.equal(arteta.rows[0]?.league_name,'Premier League');
     const paz=await(await page.request.get(url+'api/rows?kind=staff&search=Marcelo%20Paz&columns=staff_role')).json();
     assert.equal(paz.rows[0].staff_role,'Diretor de futebol');
     await page.locator('#advanced-button').click();await choose('staff_role','treinador principal','manager');
@@ -195,9 +240,15 @@ const assert = require('node:assert/strict');
     await page.locator('#profile [data-profile-tab="attributes"]').click();
     assert((await page.locator('#profile').textContent()).includes('Profissionais'));
     await page.locator('#advanced-button').click();await page.locator('[data-filter-tab="Profissionais"]').click();
-    await page.locator('[data-condition="attr_motivating"]').fill('18');await settle();
+    const professionalResponse=page.waitForResponse(r=>r.url().includes('api/rows?')&&r.url().includes('attr_motivating=18'));
+    await page.locator('[data-condition="attr_motivating"]').fill('18');
+    await page.locator('[data-condition="attr_motivating"]').press('Tab');
+    await waitForRows(await(await professionalResponse).json());
     await page.locator('#advanced [data-close="advanced"]').first().click();
-    await page.locator('[data-compare]').nth(0).check();await page.locator('[data-compare]').nth(1).check();await page.locator('#compare').click();await page.locator('#compare-dialog').waitFor({state:'visible'});
+    assert.equal(await page.locator('#compare-count').textContent(),'0/2');
+    const staffComparisonIds=await page.locator('[data-compare]').evaluateAll(list=>list.slice(0,2).map(e=>e.dataset.compare));
+    for(const uid of staffComparisonIds)await page.locator(`[data-compare="${uid}"]`).check();
+    await page.locator('#compare').click();await page.locator('#compare-dialog').waitFor({state:'visible'});
     assert((await page.locator('.comparison-score-note').textContent()).includes('19 atributos profissionais'));
     assert.equal(await page.locator('#comparison .group-row').first().textContent(),'Profissionais');
     await page.locator('[data-close="compare-dialog"]').click();
@@ -210,8 +261,9 @@ const assert = require('node:assert/strict');
     const premier=await(await page.request.get(url+'api/rows?kind=clubs&league=db:11&columns=league_name&limit=200')).json();
     assert.equal(premier.total,20);assert(premier.rows.every(r=>r.league_name==='Premier League'));
     await page.locator('#columns').click();await page.locator('[data-column="league_name"]').check();await page.locator('#save-columns').click();await settle();
+    await page.waitForFunction(()=>document.querySelector('#table tbody tr')?.textContent.includes('Premier League'));
     assert((await page.locator('#table tbody tr').first().textContent()).includes('Premier League'));
-    await page.locator('#clear').click();await page.locator('#search').fill('Corinthians');await settle();
+    await page.locator('#clear').click();await page.locator('#search').fill('Corinthians');await page.locator('#table [data-profile="318"]').waitFor();await settle();
     await page.locator('[data-sort="ca_mean"]').click();await settle();
     const first=await page.locator('#table tbody tr').first().textContent();assert(first.includes('Corinthians'));
     assert.equal(await page.locator('#table tbody .row-number').first().textContent(),'1');
@@ -257,10 +309,11 @@ const assert = require('node:assert/strict');
     for(const width of [1280,1024,850,390]){await page.setViewportSize({width,height:900});await settle();const overflow=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,elements:[...document.querySelectorAll('body *')].filter(e=>{const r=e.getBoundingClientRect();return r.width&&r.right>innerWidth+1&&!e.closest('.table-scroll');}).slice(0,12).map(e=>({tag:e.tagName,id:e.id,class:e.className,right:e.getBoundingClientRect().right}))}));if(overflow.scroll>width+1){await page.screenshot({path:path.join(__dirname,'mobile.png')});console.log(overflow);}assert(overflow.scroll<=width+1,`Overflow at ${width}`);}
     await page.screenshot({path:path.join(__dirname,'mobile.png')});
     record('Sem overflow global em 1280, 1024, 850 e 390 px');
-    await page.setViewportSize({width:1440,height:960});await page.locator('#reload').click();await page.waitForFunction(()=>document.getElementById('reload').disabled);await page.waitForFunction(()=>!document.getElementById('reload').disabled,null,{timeout:90000});
+    await page.setViewportSize({width:1440,height:960});await page.locator('#reload').click();await page.waitForFunction(()=>document.getElementById('reload').disabled);await waitForSave();
     await page.reload();await page.locator('#table [data-sort="attr_passing"]').waitFor();
     record('Recarregamento do save e reabertura da interface preservam lista e layout');
     assert.equal(await page.locator('#table [data-sort="age"]').count(),0);assert.equal(await page.locator('#table [data-sort="attr_passing"]').count(),1);
+    for(const key of ['release_fee','release_fee_domestic','release_fee_foreign'])assert.equal(await page.locator(`[data-sort="${key}"]`).count(),1);
     assert.equal((await (await page.request.get(url+'api/salaries')).json()).period,'month');
     assert(Math.abs((await (await page.request.get(url+'api/salaries')).json()).rate-1.2)<1e-10);
     assert.deepEqual(consoleErrors,[]);assert.equal(errors,'');

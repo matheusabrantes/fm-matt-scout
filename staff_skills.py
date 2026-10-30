@@ -4,7 +4,8 @@ import re
 import struct
 
 from fmsave.readers.clubs import find_club_layouts
-from staff_roles import ROLES, read_staff_roles
+from staff_roles import ROLES, read_staff_roles, read_staff_contract_roles
+from fmsave.readers.contracts import build_contract_decoder
 
 from fmsave.readers.staff import find_staff_layouts, _header_reader, _header_values, _read_ability_block
 
@@ -70,7 +71,8 @@ def read_staff_skills(game_db, members, layout):
 
 
 def enrich_staff_skills(save, members, clubs):
-    layout = find_staff_layouts(save.info.section_schemas, save.info.build).staff
+    layouts = find_staff_layouts(save.info.section_schemas, save.info.build)
+    layout = layouts.staff
     with save._context.section('game_db') as game_db:
         skills, selectors = read_staff_skills(game_db, members, layout)
         by_selector = {}
@@ -82,6 +84,10 @@ def enrich_staff_skills(save, members, clubs):
         # shortcut: only the 26.3.2 seat format is demonstrated; extend after another build is checked.
         roles = read_staff_roles(game_db, clubs, save._context.own_club_record_spans(), by_selector,
                                  club_layout.long_name_offset) if save.info.build.startswith('26.3.2+') else {}
+        if save.info.build.startswith('26.3.2+'):
+            decoder = build_contract_decoder(layouts.contracts, save._context.club_index(),
+                                             save.info.game_date, save.info.file_name)
+            roles = {**read_staff_contract_roles(game_db, by_selector, decoder, layouts), **roles}
     for member in members:
         role = roles.get((member['uid'], member.get('club_uid')))
         if role and not member.get('is_human_manager'):

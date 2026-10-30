@@ -12,6 +12,9 @@
 .pagination{flex-wrap:wrap}
 .empty-squad{color:var(--muted);white-space:normal}
 .row-number{width:44px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.opportunities{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.opportunities>span{font-size:12px;color:var(--muted)}.opportunities button[aria-pressed=true]{background:var(--selected);border-color:var(--blue);font-weight:600}
+.opportunities p{flex-basis:100%;margin:0}.opportunities[hidden]{display:none}
 #table th:has([data-sort="staff_area"]),#table th:has([data-sort="staff_role"]){text-align:left}
 .comparison-score{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line)}.comparison-score>div{display:flex;flex-direction:column;gap:6px;padding:12px;min-width:0;overflow-wrap:anywhere}.comparison-score>div+div{border-left:1px solid var(--line)}.comparison-score .better{color:var(--green);background:oklch(.96 .02 155)}.comparison-score b{font-size:11px}.comparison-score-note{margin:8px 0 16px}
 @media(max-width:850px){.tab-end{width:100%;max-width:100%;min-width:0;flex-wrap:wrap;justify-content:flex-start}.titlebar button{max-width:100%}.titlebar .save-info{margin-right:0}}

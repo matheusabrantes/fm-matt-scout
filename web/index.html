@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>FM Matt Scout 26</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
   <script src="app.js" type="module"></script>
 </head>
@@ -57,6 +58,17 @@
     <section id="workspace" hidden>
       <div class="results">
         <div class="list-heading"><h1 id="list-title">Jogadores</h1><span id="result-count"></span><span id="sort-summary">PA · desempate pela soma</span></div>
+        <div id="opportunities" class="opportunities" role="group" aria-label="Busca rápida de jogadores">
+          <input id="availability" type="hidden">
+          <span>Oportunidades</span>
+          <button data-availability="" aria-pressed="true">Todos</button>
+          <button data-availability="free" aria-pressed="false">Sem contrato</button>
+          <button data-availability="expiring_6" aria-pressed="false">Expira em até 6 meses</button>
+          <button data-availability="expiring_12" aria-pressed="false">Expira em até 12 meses</button>
+          <button data-availability="transfer_listed" aria-pressed="false">Lista de transferências</button>
+          <button data-availability="loan_listed" aria-pressed="false">Lista de empréstimos</button>
+          <p id="availability-note" class="fine" role="status"></p>
+        </div>
         <div class="table-scroll"><table id="table"><thead></thead><tbody></tbody></table></div>
         <div class="pagination"><span id="page-info" role="status" aria-live="polite"></span><button id="next" disabled>Carregar mais</button><label>Linhas por clique<select id="page-size"><option>50</option><option selected>100</option><option>200</option></select></label></div>
         <div id="table-note" class="table-note">Soma: 36 atributos de linha. † CA/PA: leitura experimental. Nota: estimativa Matt Scout.</div>

@@ -7,11 +7,13 @@ import sqlite3
 import tempfile
 import unicodedata
 import warnings
+from calendar import monthrange
 from datetime import date
 from statistics import fmean
 from pathlib import Path
 
 import fmsave
+from contract_reader import contract_state, listing_status
 from staff_roles import ROLES as STAFF_ROLES
 from staff_skills import SKILLS as STAFF_SKILLS, enrich_staff_skills
 
@@ -97,9 +99,16 @@ def contract_fields(row):
     row['contract_kind_code'] = c.get('kind_code')
     clauses = c.get('clauses') or []
     row['release_kinds'] = [clause['kind'] for clause in clauses if clause['kind'] in RELEASE_KINDS]
-    fees = [clause['value'] for clause in clauses if clause['kind'] in RELEASE_KINDS and clause.get('value') is not None]
-    row['release_fee'] = min(fees) if fees else None
-    row['has_contract_data'] = bool(c) or row.get('has_contract', False)
+    for column, clause_kind in (('release_fee', 'minimum_fee_release'),
+                                ('release_fee_domestic', 'minimum_fee_release_domestic'),
+                                ('release_fee_foreign', 'minimum_fee_release_foreign')):
+        fees = [clause['value'] for clause in clauses if clause['kind'] == clause_kind
+                and clause.get('parameter') is None and clause.get('value') is not None]
+        row[column] = min(fees) if fees else None
+    row['contract_state'] = contract_state(row)
+    if 'contract' in row and (row['contract_state'] != 'contracted' or c.get('end_source') != 'contract'):
+        row['contract_start'] = row['contract_end'] = None
+    row['has_contract_data'] = row['contract_state'] == 'contracted' or row.get('has_contract', False)
     return row
 GROUPS = {'Técnicos': TECHNICAL, 'Mentais': MENTAL, 'Físicos': PHYSICAL,
           'Goleiro': GOALKEEPING, 'Ocultos': HIDDEN, 'Personalidade': PERSONALITY,
@@ -254,7 +263,7 @@ def enrich(player):
     return player
 
 
-def filter_rows(rows, query, shortlist=()):
+def filter_rows(rows, query, shortlist=(), game_date=None):
     kind = query.get('kind', 'players')
     results = []
     search = normalized(query.get('search', ''))
@@ -262,7 +271,25 @@ def filter_rows(rows, query, shortlist=()):
     positions = set(query.get('position','').split(',')) - {''}
     leagues = set(query.get('league','').split(',')) - {''}
     release_kinds = set(query.get('release_kind','').split(',')) - {''}
+    availability = query.get('availability')
+    today = date.fromisoformat(game_date) if game_date else None
+    deadline = None
+    if availability in ('expiring_6', 'expiring_12') and today:
+        year, month = divmod(today.year * 12 + today.month - 1 + int(availability.split('_')[1]), 12)
+        deadline = date(year, month + 1, min(today.day, monthrange(year, month + 1)[1])).isoformat()
     for row in rows:
+        if availability == 'free' and row.get('contract_state') != 'free':
+            continue
+        if availability in ('transfer_listed', 'loan_listed') and row.get(availability) is not True:
+            continue
+        if availability in ('expiring_6', 'expiring_12'):
+            contract = row.get('contract') or {}
+            expiry = row.get('contract_end')
+            if (not deadline or row.get('contract_state') != 'contracted'
+                    or contract.get('end_source') != 'contract' or not expiry
+                    or not contract.get('start') or contract['start'] > today.isoformat()
+                    or not today.isoformat() <= expiry <= deadline):
+                continue
         if search and search not in normalized(f"{row.get('name', '')} {row.get('club_name', '')} {row.get('club_short_name', '')}"):
             continue
         if 'club' in numeric_choices and row.get('club_uid') not in numeric_choices['club']:
@@ -289,11 +316,15 @@ def filter_rows(rows, query, shortlist=()):
             continue
         if kind == 'players' and positions and not any((row.get('positions', {}).get(position.lower()) or 0) >= 15 for position in positions):
             continue
-        if query.get('free') == '1' and row.get('club_uid') is not None:
+        if query.get('free') == '1' and row.get('contract_state') != 'free':
             continue
         failed = False
         for field in RANGES:
             actual = row.get('attribute_sum' if field == 'sum' else field)
+            if field == 'release_fee' and release_kinds:
+                fees = [c['value'] for c in (row.get('contract') or {}).get('clauses', [])
+                        if c.get('kind') in release_kinds and c.get('value') is not None]
+                actual = min(fees) if fees else None
             for bound in ('min', 'max'):
                 value = query.get(f'{field}_{bound}')
                 if value and (actual is None or isinstance(actual, dict) or (actual < float(value) if bound == 'min' else actual > float(value))):
@@ -304,14 +335,15 @@ def filter_rows(rows, query, shortlist=()):
         if failed:
             continue
         if query.get('contract_before'):
-            expiry = (row.get('contract') or {}).get('end') or row.get('contract_end')
+            expiry = row.get('contract_end')
             if expiry is None or expiry > query['contract_before']:
                 continue
         if query.get('contract_after'):
             expiry = row.get('contract_end')
             if expiry is None or expiry < query['contract_after']:
                 continue
-        if query.get('no_contract') == '1' and row.get('has_contract_data'):
+        if query.get('no_contract') == '1' and not (row.get('contract_state') == 'free'
+                or kind == 'staff' and row.get('has_contract') is False):
             continue
         if 'squad_status' in numeric_choices and row.get('squad_status_code') not in numeric_choices['squad_status']:
             continue
@@ -339,7 +371,8 @@ def filter_rows(rows, query, shortlist=()):
     valid = {'name', 'age', 'club_name', 'ca', 'pa', 'attribute_sum', 'rating', 'reputation', 'nation_id', 'eu_national', 'goalkeeping_sum', 'ability_difference', 'rep_home', 'rep_current', 'rep_world', 'wage', 'value', 'release_fee', 'ca_mean', 'pa_mean', 'age_mean', 'player_count', 'ca_count', 'pa_count', 'age_count', 'team_slot'}
     attribute_columns = {f'attr_{key}' for group in GROUPS.values() for key in group}
     valid.update(('staff_area','staff_role','height_cm','balance','transfer_budget_remaining',
-                  'wage_budget_weekly','league_name','stadium_seated_capacity','stadium_expansion_capacity'))
+                  'wage_budget_weekly','league_name','stadium_seated_capacity','stadium_expansion_capacity',
+                  'release_fee_domestic','release_fee_foreign'))
     if sort not in valid | attribute_columns:
         raise ValueError('Coluna de ordenação inválida.')
     def key(row):
@@ -389,6 +422,9 @@ class Scout:
             with warnings.catch_warnings(record=True) as captured, fmsave.open(copy) as save:
                 progress('Lendo jogadores e atributos…')
                 players = [enrich(p) for p in records(save.players())]
+                for player in players:
+                    player['transfer_listed'], player['loan_listed'] = listing_status(
+                        player, save.info.build, str(save.info.game_date))
                 progress('Lendo staff e clubes…')
                 notes = []
                 try:
@@ -460,6 +496,8 @@ class Scout:
                         'build': save.info.build, 'managed': managed,
                         'counts': {'players': len(players), 'staff': len(staff), 'clubs': len(clubs)},
                         'hidden_female_clubs': hidden_female_clubs,
+                        'listing_status_count': sum(type(p.get('transfer_listed')) is bool
+                                                    and type(p.get('loan_listed')) is bool for p in players),
                         'league_clubs_count': sum(c.get('league_key') is not None for c in clubs),
                         'staff_roles_count': sum(s.get('staff_role_key') != 'unknown' for s in staff),
                         'staff_skills_count': sum(s.get('attribute_sum') is not None for s in staff),

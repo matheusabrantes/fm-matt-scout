@@ -99,3 +99,57 @@ Revisão antislop durante a construção, no escopo desta alteração:
 - Purpose Gate PASS: cargo e liga reutilizam os seletores pesquisáveis e a configuração de colunas existentes, para atender aos critérios de recrutamento pedidos; nenhuma decoração ou etapa nova.
 - Liveliness PASS: direção visual 1/1/1 de DESIGN.md preservada, com tabela compacta, números alinhados e perfil lateral; captura staff revisada e testes sem overflow global de 390 a 1280 px.
 - Craftsmanship PASS: 35 testes, 22 fluxos, zero erros de console, filtros por nome/seleção múltipla e layouts persistentes; aplicativo nativo assinado, save original preservado. Limites de cargo/liga e ausência de treino/base são documentados. VoiceOver completo e conferência no FM não foram exercitados.
+
+## Atualização de 29–30/10/2026: oportunidades, cláusulas e cargos
+
+Controle: COR de **30/12/2025**, build `26.3.2+2329565`, SHA-256
+`7010e6db21345f51e2c1a4b00788e21994daae7ae998a271b9d75661f965e8a0`.
+O original manteve esse SHA após a navegação somente de leitura no FM e a
+compilação/instalação local. O `.app` foi atualizado no caminho canônico em
+Aplicativos e recebeu assinatura local válida; recursos comparados com as fontes.
+
+Os **55 testes Python** passaram, incluindo estados de contrato, desconhecidos
+excluídos da busca de livres, prazos inclusivos por meses de calendário e ano
+bissexto, datas heurísticas/futuras rejeitadas, estados de listagem 0/1/2 separados,
+versões/estados desconhecidos indisponíveis, cláusulas gerais/nacionais/estrangeiras
+sem agregar outras condições, ordenação com valores ausentes no fim e validação
+dos filtros portáteis. Sintaxe de `web/app.js`, `qa/check_ui.cjs` e `build.command`
+conferida. Os testes de cargos verificam propriedade, contrato vigente, ambiguidade
+e prioridade de assentos, além de códigos desconhecidos mantidos sem rótulo.
+
+Na execução nativa com o COR carregado: 63.514 jogadores, 10.537 staff, 32.867
+clubes, nenhum aviso; **9.849 cargos identificados** e 10.479 somas profissionais
+completas. As 25 categorias de cargo não cobrem todos os vínculos e não foram todas
+conferidas em perfis do jogo. Nicolas Jover (bolas paradas), Raony e Toni Tapalović
+(cargo atual de coordenação de análise de recrutamento) foram conferidos no FM;
+a categoria profissional e o histórico não substituem o cargo atual exibido.
+
+A API da instância nativa confirmou **8.607 livres, 12.635 com expiração em até
+6 meses, 13.723 em até 12 meses, 302 listados para transferência e 1.281 para
+empréstimo**. A listagem é parcial: 40.010 jogadores têm ambos os estados
+identificados. O controle do FM mostrou Memphis Depay na lista de transferências,
+Vitinho (32 anos) disponível para empréstimo e Yuri Alberto sem estatuto definido
+em ambos. Os três resultados corresponderam à API. O botão nativo de transferências
+mostrou 302 resultados e a busca Memphis Depay encontrou o jogador.
+
+O contrato normal do FM confirmou a rescisão geral de Vinícius Júnior (€1 bilhão),
+a nacional de Lucas Paquetá (€63M) e a de rebaixamento de Tiago Gabriel (€1M,
+inativa enquanto a condição não ocorrer). Os tipos lidos correspondem; valores
+brutos continuam em unidades do save, sem conversão monetária presumida.
+
+Dívida atual dos clubes continua sem coluna: a investigação avançou nos registros
+de prestações, mas proprietário estrutural e contador atual ainda não são
+identificados com segurança. Ver `CLUB_DEBT_RESEARCH.md`. Não foi substituída
+por dívida inicial, saldo ou estimativa extraída de capturas.
+
+A execução final de `qa/check_ui.cjs`, encerrada em **30/10/2026**, passou em
+**27 fluxos, com zero erros de console**, usando o Comet instalado como binário
+Chromium e storage temporário isolado. Incluiu os cinco atalhos com conferência
+da resposta e das linhas exibidas, ordenação nas três colunas de rescisão,
+importação sem duplicação, comparação profissional do staff, tabelas de clubes,
+quatro larguras de tela e recarregamento/reabertura preservando as três colunas.
+O relatório local foi atualizado em `qa/local-ui-report.json` (ignorado no Git).
+As esperas frágeis do teste foram ajustadas para aguardar os estados conferidos;
+o HTML define ícone vazio para evitar pedidos sem a rota autorizada que geravam
+403 no console. As fontes, recursos do app e arquivos correspondentes no ZIP
+foram comparados byte a byte; assinatura e preservação do COR conferidas novamente.

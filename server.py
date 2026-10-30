@@ -29,7 +29,7 @@ def serve(port=0, storage=None):
     state = {'loading': False, 'progress': '', 'error': None}
     layout_path = scout.storage.parent / 'layouts.json'
     layout_columns = {'name','age','positions','club_name','ca','pa','attribute_sum','goalkeeping_sum','rating','nation_id','reputation','ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot','height_cm','balance','transfer_budget_remaining','wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity','league_name'} | {f'attr_{key}' for group in GROUPS.values() for key in group}
-    layout_columns.update(('eu_national','staff_role','staff_area'))
+    layout_columns.update(('eu_national','staff_role','staff_area','release_fee_domestic','release_fee_foreign'))
 
     def load(path):
         try:
@@ -128,7 +128,7 @@ def serve(port=0, storage=None):
                         if kind == 'clubs':
                             scope = query.get('squad_scope', 'first')
                             candidates = [{**r, **r['squad_metrics'][scope]} for r in candidates]
-                        rows = filter_rows(candidates, query, selected)
+                        rows = filter_rows(candidates, query, selected, game_date=scout.meta['date'])
                         offset = max(0, int(query.get('offset', 0)))
                         limit = min(200, max(1, int(query.get('limit', 100))))
                         columns = ('uid', 'unique_id', 'name', 'age', 'nation_id', 'nation_name', 'eu_national', 'club_name', 'club_short_name', 'club_uid',
