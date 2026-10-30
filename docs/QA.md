@@ -204,3 +204,38 @@ Conferências somente de leitura no FM: Célio Silva com Autoridade 17, Trabalho
 As novas somas usam 21 competências ativas, máximo 420. Dois campos antigos de goleiros permanecem nomeados como legado para preservar filtros/layouts, fora da soma e do placar. Nomes de liga/estádio usam a instalação local; alterações de nome sem string no save podem permanecer com o nome da base instalada. Nem todos os bytes do editor foram decodificados; não foi implementado modelo de preço de compra sem validação.
 
 A instalação `/Applications/FM Matt Scout.app` e o ZIP foram atualizados sem reinstalar dependências nem recompilar a interface nativa. Fontes e recursos no bundle/ZIP são idênticos aos validados; Info.plist e assinatura ad hoc passaram após executar. No AppKit/WebKit, a busca do Corinthians mostrou Brasileirão e o perfil Neo Química Arena; Célio mostrou os quatro novos atributos conferidos e soma 156, com limite 21–420 na interface. A API da instalação confirmou 25.593 clubes com liga, 10.536 somas de staff e Vítor Manoel com valor 0/contratado. Layouts e calibração monetária mantiveram os hashes capturados no início da atualização. O COR original manteve SHA-256 `3795481a7bebcdd4512f3c1419b3c0890adda042dc1f5fa74cb73b92874cde8d`.
+
+
+## Estimativas FMSuperScout — 30/10/2026
+
+Controles em `qa/fixtures/value-model-controls.json` registram oito faixas
+observadas no FM aberto, cinco jogadores do Corinthians e três do Madrid.
+O campo positivo do save ficou dentro de 8/8 faixas; a regressão pura, 1/8.
+Não foi negociada transferência nem alterado o save. Isso não valida preço aceito
+ou acurácia da regressão para valores ausentes. Detalhes e desvios em
+`PLAYER_VALUES_RESEARCH.md`.
+
+98 testes Python passaram. Novos casos cobrem resultado numérico da versão fixa,
+prioridade do campo lido, zero preservado, prazo curto/default, contratos futuros
+mesmo sem expiração lida, campos inválidos, salário relativo com empates, listagem
+e filtros portáteis. Um valor esperado do teste de contrato curto foi corrigido
+de 25,9 para 26,2 milhões após cálculo independente em JavaScript; a implementação
+já produzia 26,2. O teste monetário executa o JavaScript real e confere campos do
+modelo na tabela/perfil, marca ≈, conversão, filtros e independência de período.
+
+34 fluxos Chromium passaram com zero erros de console, incluindo leitura e
+releitura do COR, persistência e quatro larguras de tela. O fluxo novo verifica
+colunas do modelo, valor original prioritário de Vinícius, fallback separado de
+Kane, compra em EUR no perfil/coluna e limite monetário salvo na unidade original.
+Log local: `/tmp/fm-scout-ui-20261030-value-model-01.log`.
+
+Recursos da instalação e ZIP atualizados sem reinstalar dependências/recompilar
+Swift; conteúdo comparado com os fontes e assinatura ad hoc verificada.
+
+A instalação AppKit/WebKit carregou 63.514 jogadores, 10.537 staff e 32.867
+clubes. O perfil contratual de Hugo Souza mostrou valor para scout €10.124.522,
+origem Lido do save, compra estimada ≈€14.348.418 e os dois intervalos do modelo.
+Isso confirma a apresentação/cálculo na instalação, não um preço de transferência
+validado no FM. Um texto antigo do rodapé foi corrigido para distinguir preço
+aceito de estimativa; o teste JavaScript verifica a nova redação.
+Layouts/calibração monetária e COR original mantiveram os hashes anteriores.

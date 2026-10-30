@@ -75,3 +75,66 @@ valor de mercado zero.
 Harry Kane, Bayern, na mesma data, mostrou **Não está à venda**, sem faixa numérica no cabeçalho. Seu marcador de 300 milhões não foi tratado como valor monetário nem como preço pedido. Esse controle isolado não demonstra que todo marcador tenha o mesmo motivo.
 
 O [manual oficial de transferências do FM24](https://community.sports-interactive.com/sigames-manual/football-manager-2024/transfers-recruitment-and-scouting-r4962/) distingue valor e provável exigência do clube, e descreve propostas parceladas e negociação; não fornece uma fórmula universal. A versão do manual é anterior ao FM26. O [experimento do autor do fmsave no Reddit](https://www.reddit.com/r/footballmanagergames/comments/1wndzpf/i_parsed_101k_players_in_a_fresh_fm26_save_to/) ajusta valor em função de idade/CA/PA para encontrar jogadores subvalorizados; não valida o preço aceito numa negociação nem os extremos da faixa.
+
+## Modelo adotado — 30/10/2026
+
+A pedido do usuário, `value_model.py` implementa independentemente as equações
+publicadas no [código FMSuperScout fixado em cd0062e](https://github.com/mavarobli/FMSuperScout/blob/cd0062e0e51ca57bbed5ef0268a04427e3655afd/app/app.js#L1027-L1140).
+A documentação da origem estava divergente do código atual, principalmente
+no multiplicador de listados. Os números abaixo seguem o código dessa versão;
+não foi incorporado o JavaScript do projeto nem adicionada dependência.
+
+Para lacunas: `ln(V) = 10,96 + 0,997 × reputação_saturada/1000 − 0,069 × idade
+− 0,041 × potencial_jovem + 0,507 × ln(máximo(2, meses))`.
+Reputação saturada mantém até 7.500 e adiciona 30% do excedente. Potencial jovem
+é PA−CA não negativo até 21 anos, metade entre 22–24, zero depois.
+Sem prazo lido, usa 36 meses; até quatro meses, aplica ×0,7. Arredonda para
+100 mil a partir de um milhão e 10 mil abaixo. Faixa: ±50% até 20 anos,
+±35% depois. Reputação mundial zero usa 3.000, com a hipótese exposta no perfil.
+
+Valor positivo do save tem prioridade e faixa própria de ±15%. Zero original
+continua zero no campo original; uma estimativa adicional não altera seu estado
+contratual. Sentinelas nunca viram valor real. Dados incompletos de idade,
+CA/PA, reputação ou vínculo, contratos vencidos/futuros e datas inválidas
+não geram estimativa. Sem contrato confirmado: taxa zero, sem incluir luvas,
+salário ou comissões. As faixas são heurísticas, sem confiança estatística medida.
+
+Compra usa o valor acima. Listado para transferência tem multiplicador 1;
+os demais usam `clamp(0,7 + 0,014 × meses, 0,6, 1,35)`, com 30 meses se ausente.
+Ajusta idade/potencial, posição salarial no clube (mínimo oito salários lidos,
+empates preservados, agrupamento por UID do clube) e diferença de reputação
+comprador/vendedor quando há um único clube gerenciado identificado. Limite
+final ×0,4–1,7, faixa ±15%. Não aplica “não está à venda” nem “será dispensado”
+porque esses estados ainda não têm decoder confirmado; não infere a partir de
+sentinelas, ausência de clube ou salário. A fonte também não cobre concorrência,
+orçamento e comissões. Não usamos salário/período como preço de compra.
+
+A saída matemática usa a escala monetária interna do valor de origem. Tabela,
+perfil e filtros aplicam a conversão monetária já conferida para a carreira;
+o período salarial não afeta essas estimativas. Sem taxa, mostram unidades do
+save. As aproximações do modelo não se tornam exatas após conversão.
+
+### Conferência contra as faixas do FM
+
+COR, 30/12/2025, jogo aberto, somente leitura. **Ambos os clubes exibem faixas**,
+inclusive o Corinthians gerenciado. Controles em `qa/fixtures/value-model-controls.json`.
+Euros convertidos pela cláusula geral de Vinícius: `1e9 / 864206784`.
+
+| Jogador | Faixa exibida pelo FM (€ M) | Valor do save (€ M) | Regressão pura (€ M) |
+|---|---:|---:|---:|
+| Hugo Souza | 9,4–11,5 | 10,12 | 6,13 |
+| Yuri Alberto | 10–13 | 12,98 | 4,86 |
+| Breno Bidon | 12–14 | 12,15 | 0,75 |
+| Rodrigo Garro | 10,5–13 | 11,25 | 2,66 |
+| André Ramalho | 0,6–0,95 | 0,94 | 1,27 |
+| Vinícius Júnior | 111–169 | 152,21 | 131,80 |
+| Kylian Mbappé | 298–357 | 303,68 | 238,14 |
+| Jude Bellingham | 193–215 | 193,50 | 184,68 |
+
+O valor do save caiu dentro de 8/8 faixas; a regressão pura, 1/8. Isso sustenta
+priorizar o campo lido, **não valida a regressão nas lacunas**. O caso Breno
+mostra uma subestimação grande. Não houve ajuste de coeficientes para forçar
+esses oito controles, nem uso do meio da faixa como valor real. Não foi
+negociada nenhuma transferência, então os controles não validam o preço aceito.
+As faixas reais foram observadas para conferência e não são preenchidas no app
+por uma tabela de nomes fixos. O decoder dos extremos da faixa continua pendente.

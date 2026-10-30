@@ -21,7 +21,7 @@ vm.runInNewContext(source + `
   salaryPrefs={currency:'EUR',period:'month',rate:1.25,money_rate:2,money_source:'clause'};
   for(const period of ['week','month','year']) {
     salaryPrefs.period=period;
-    for(const key of ['value','balance','transfer_budget_remaining','release_fee']) {
+    for(const key of ['value','balance','transfer_budget_remaining','release_fee','model_value','model_fee']) {
       assert.equal(filterFactor(key),2);
       assert.equal(filterFactor(key+'_min'),2);
       assert(columnLabel(key).includes('EUR'));
@@ -31,8 +31,8 @@ vm.runInNewContext(source + `
   salaryPrefs.period='month';
   assert.equal(moneyFormat(-125).replace(/[^0-9-]/g,''),'-250');
   assert.equal(moneyFormat(null),'—');
-  fieldIds.push('value_min','value_max','balance_min','balance_max','transfer_budget_remaining_min','transfer_budget_remaining_max');
-  for(const [key,amount] of [['value_min',200],['value_max',400],['balance_min',-200],['balance_max',100],['transfer_budget_remaining_min',50],['transfer_budget_remaining_max',300]]) {
+  fieldIds.push('value_min','value_max','balance_min','balance_max','transfer_budget_remaining_min','transfer_budget_remaining_max','model_value_min','model_fee_max');
+  for(const [key,amount] of [['model_value_min',220],['model_fee_max',500],['value_min',200],['value_max',400],['balance_min',-200],['balance_max',100],['transfer_budget_remaining_min',50],['transfer_budget_remaining_max',300]]) {
     $(key).value=String(amount);
     assert.equal(Number(values()[key]),amount/2);
   }
@@ -60,6 +60,15 @@ vm.runInNewContext(source + `
   kind='players';profileTab='transfer';currentProfile={row:{uid:2,name:'QA player',value:500,transfer_value:500},history:[],shortlisted:false};renderProfile();
   assert($('profile').innerHTML.includes('Valor de mercado · EUR'));
   assert($('profile').innerHTML.includes('1.000'));
+  Object.assign(currentProfile.row,{model_value:500,model_value_low:425,model_value_high:575,model_fee:600,model_fee_low:510,model_fee_high:690,model_value_basis:'save',model_fee_basis:'save'});renderProfile();
+  assert($('profile').innerHTML.includes('Faixa de compra do modelo'));
+  assert(!$('profile').innerHTML.includes('preço estimado de venda indisponível'));
+  assert($('profile').innerHTML.includes('preço efetivamente aceito depende da negociação'));
+  assert($('profile').innerHTML.includes(moneyFormat(600)));
+  kind='players';visibleColumns.players=['name','value','model_value','model_fee'];rows=[currentProfile.row];renderTable();
+  assert($('table').querySelector('tbody').innerHTML.includes('≈ '+moneyFormat(600)));
+  assert(!$('table').querySelector('tbody').innerHTML.includes('≈ '+moneyFormat(500)));
+  currentProfile.row.model_value_basis='model';renderTable();assert($('table').querySelector('tbody').innerHTML.includes('≈ '+moneyFormat(500)));
   currentProfile.row.value=0;currentProfile.row.transfer_value=null;currentProfile.row.value_note='Valor zero gravado no save; não significa jogador sem contrato.';renderProfile();
   assert($('profile').innerHTML.includes(moneyFormat(0)));assert($('profile').innerHTML.includes('não significa jogador sem contrato'));
   salaryPrefs={currency:'USD',period:'month',rate:null,money_rate:null,money_source:null};

@@ -19,6 +19,7 @@ from club_locations import read_current_club_links, read_installed_names, stadiu
 from fmsave.readers.competitions import find_competition_id_pair_layout, locate_competition_database_ids
 from contract_reader import RELEASE_KINDS, contract_state, listing_status
 from player_values import market_value_fields
+from value_model import enrich_estimates
 from staff_roles import ROLES as STAFF_ROLES
 from staff_skills import SKILLS as STAFF_SKILLS, SCORING_SKILLS as STAFF_SCORING_SKILLS, enrich_staff_skills
 
@@ -90,7 +91,8 @@ RANGES = {'age': 100, 'ca': 200, 'pa': 200, 'ability_difference': 200, 'sum': 72
           'club_reputation': 10000, 'reputation': 10000, 'value': 10**12, 'wage': 10**12,
           'release_fee': 10**12, 'balance': 10**12, 'transfer_budget_remaining': 10**12,
           'wage_budget_weekly': 10**12, 'height_cm': 255,
-          'stadium_seated_capacity': 1000000, 'stadium_expansion_capacity': 1000000}
+          'stadium_seated_capacity': 1000000, 'stadium_expansion_capacity': 1000000,
+          'model_value': 10**12, 'model_fee': 10**12}
 
 
 def contract_fields(row):
@@ -384,7 +386,7 @@ def filter_rows(rows, query, shortlist=(), game_date=None):
     attribute_columns = {f'attr_{key}' for group in GROUPS.values() for key in group}
     valid.update(('staff_area','staff_role','height_cm','balance','transfer_budget_remaining',
                   'wage_budget_weekly','league_name','stadium_name','stadium_seated_capacity','stadium_expansion_capacity',
-                  'release_fee_domestic','release_fee_foreign'))
+                  'release_fee_domestic','release_fee_foreign','model_value','model_fee'))
     if sort not in valid | attribute_columns:
         raise ValueError('Coluna de ordenação inválida.')
     def key(row):
@@ -534,6 +536,8 @@ class Scout:
                 except (fmsave.FmsaveError, ValueError) as exc:
                     managed = []
                     notes.append(f'Time do treinador não identificado: {exc}')
+                buyer = club_index.get(managed[0]['club_uid'], {}) if len(managed) == 1 else {}
+                enrich_estimates(players, str(save.info.game_date), buyer.get('reputation'))
                 meta = {'file': source.name, 'path': str(source), 'date': str(save.info.game_date),
                         'build': save.info.build, 'managed': managed,
                         'counts': {'players': len(players), 'staff': len(staff), 'clubs': len(clubs)},
