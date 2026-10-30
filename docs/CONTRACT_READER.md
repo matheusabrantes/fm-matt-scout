@@ -57,8 +57,8 @@ respectivamente, `minimum_fee_release`, `minimum_fee_release_domestic` e
 `minimum_fee_release_foreign`. Nacional/internacional referem-se ao país do
 clube atual. Cláusulas com parâmetros adicionais, de divisão superior ou por
 rebaixamento não são agregadas nessas colunas. Ausência de leitura aparece como
-travessão, sem supor valor zero. Os valores permanecem identificados como
-unidades do save até existir conversão monetária validada para esse campo.
+travessão, sem supor valor zero. Valores base continuam em unidades do save;
+a apresentação e os filtros aplicam a conversão por referência descrita abaixo.
 
 ## Listas de transferência e empréstimo
 
@@ -99,4 +99,28 @@ O contrato de Vinícius Júnior, Real Madrid, 25 anos, 12/07/2000, até 30/06/20
 mostra **Cláusula de Rescisão: €1MM** (um bilhão de euros). O leitor retorna
 `minimum_fee_release`, valor bruto `864206784`, sem cláusula nacional ou
 estrangeira. São controles para distinguir tipos e demonstrar que a moeda
-interna não é EUR; as colunas não aplicam uma taxa fixa inferida desses exemplos.
+interna não é EUR; as colunas não aplicam uma taxa fixa gravada no código a partir desses exemplos.
+
+## Conversão das cláusulas em 30/10/2026
+
+`SalarySettings` conserva a taxa salarial existente e permite uma referência
+monetária separada, `money_rates[carreira][moeda]`, obtida por valor exibido no FM
+dividido pelo valor bruto de uma rescisão identificada no perfil. O exemplo
+fornecido e conferido de Vinícius é €1.000.000.000 / 864.206.784. Trata-se de
+preferência local da carreira, não taxa de mercado ou constante do parser.
+
+Tabela, perfil (incluindo rescisões condicionais) e filtros usam essa taxa sem
+multiplicar pelo período salarial. Percentuais e outros parâmetros permanecem
+parâmetros. Os limites pesquisados/exportados são unidades originais; trocar
+moeda ou período preserva o limite original e aplicar um filtro salvo restaura
+a exibição na moeda atual. A validação aceita limites monetários fracionários.
+
+Sem referência própria, uma taxa salarial existente pode ser usada como
+aproximação, identificada na interface. Sem nenhuma taxa, permanece bruto com
+unidade explícita. Valores de mercado e finanças de clubes não foram incluídos
+nesta correção. As taxas não migram automaticamente para outra carreira/moeda.
+
+O FM abrevia e arredonda valores: com a referência do Vinícius, o valor bruto
+864.206 de Tiago resulta em aproximadamente €999.999,09, a menos de €2 do €1M
+abreviado pelo FM. A leitura serializada inteira e a exibição abreviada não
+permitem certificar centavos para todas as cláusulas.

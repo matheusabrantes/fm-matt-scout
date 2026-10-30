@@ -1,5 +1,8 @@
 """Contract states from the player's current registration and decoded terms."""
 
+RELEASE_KINDS = {'minimum_fee_release', 'minimum_fee_release_foreign', 'minimum_fee_release_domestic',
+                 'minimum_fee_release_domestic_higher_division', 'relegation_release', 'non_promotion_release'}
+
 
 def contract_state(row):
     contract = row.get('contract')

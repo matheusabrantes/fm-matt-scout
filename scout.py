@@ -13,7 +13,7 @@ from statistics import fmean
 from pathlib import Path
 
 import fmsave
-from contract_reader import contract_state, listing_status
+from contract_reader import RELEASE_KINDS, contract_state, listing_status
 from staff_roles import ROLES as STAFF_ROLES
 from staff_skills import SKILLS as STAFF_SKILLS, enrich_staff_skills
 
@@ -86,8 +86,6 @@ RANGES = {'age': 100, 'ca': 200, 'pa': 200, 'ability_difference': 200, 'sum': 72
           'release_fee': 10**12, 'balance': 10**12, 'transfer_budget_remaining': 10**12,
           'wage_budget_weekly': 10**12, 'height_cm': 255,
           'stadium_seated_capacity': 1000000, 'stadium_expansion_capacity': 1000000}
-RELEASE_KINDS = {'minimum_fee_release', 'minimum_fee_release_foreign', 'minimum_fee_release_domestic',
-                 'minimum_fee_release_domestic_higher_division', 'relegation_release', 'non_promotion_release'}
 
 
 def contract_fields(row):

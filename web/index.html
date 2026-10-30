@@ -13,7 +13,7 @@
     <div class="identity"><strong>FM Matt Scout <span>26</span></strong><small>Scouting para macOS</small></div>
     <div class="save-info"><span id="save-name">Nenhum save aberto</span><small id="save-date">Abra um save do Football Manager 26</small></div>
     <button id="reload" disabled>Recarregar</button>
-    <button id="salary-settings" disabled>Salários…</button>
+    <button id="salary-settings" disabled>Moeda / salários…</button>
     <button id="open" class="primary">Abrir save…</button>
   </header>
   <nav class="tabs" aria-label="Área de scouting">
@@ -82,10 +82,11 @@
   <dialog id="preset-dialog" aria-labelledby="preset-title"><div class="dialog-heading"><h2 id="preset-title">Salvar filtro tático</h2><button data-close="preset-dialog">Fechar</button></div><p>Salva posição, clube, idade, nacionalidade, liga, atributos e ordenação atuais.</p><label>Nome do filtro<input id="preset-name" maxlength="120" placeholder="Ex.: Volante · 4-3-3 · pressão alta"></label><button id="confirm-preset" class="primary">Salvar filtro</button></dialog>
   <dialog id="columns-dialog" aria-labelledby="columns-title"><div class="dialog-heading"><h2 id="columns-title">Colunas da tabela</h2><button data-close="columns-dialog">Fechar</button></div><p>Escolha os indicadores. O layout é salvo neste Mac para cada lista.</p><div id="column-options"></div><button id="save-columns" class="primary">Salvar layout</button><button id="reset-columns">Restaurar padrão</button></dialog>
   <dialog id="salary-dialog" aria-labelledby="salary-title">
-    <div class="dialog-heading"><h2 id="salary-title">Exibição de salários</h2><button data-close="salary-dialog">Fechar</button></div>
+    <div class="dialog-heading"><h2 id="salary-title">Moeda e salários</h2><button data-close="salary-dialog">Fechar</button></div>
     <div class="location-grid"><label>Moeda<select id="salary-currency"><option value="EUR">Euro (€)</option><option value="BRL">Real (R$)</option><option value="GBP">Libra (£)</option><option value="USD">Dólar (US$)</option></select></label><label>Período<select id="salary-period"><option value="month">Mensal</option><option value="week">Semanal</option><option value="year">Anual</option></select></label></div>
     <p id="salary-status" class="fine"></p>
     <fieldset><legend>Conferir a conversão com o FM</legend><p id="salary-reference" class="fine"></p><label>Salário desse profissional exibido no FM, na moeda e período acima<input id="salary-amount" type="number" min="0.01" max="1000000000000" step="any" placeholder="Ex.: 1500000"></label><p class="fine">O leitor não identifica a moeda interna. Informe um valor do mesmo save para conferir a conversão. Referências abreviadas em M ou mil produzem uma conversão aproximada. Mensal = semanal × 52 ÷ 12; anual = semanal × 52. A conferência fica salva para esta carreira e moeda.</p></fieldset>
+    <fieldset><legend>Conferir valores das cláusulas</legend><p id="money-status" class="fine"></p><label>Cláusula do profissional selecionado<select id="money-kind"></select></label><label>Valor dessa cláusula no FM, na moeda acima<input id="money-amount" type="number" min="0.01" max="1000000000000" step="any" placeholder="Ex.: 1000000000 para €1 bilhão"></label><p class="fine">Informe o valor completo de uma rescisão do perfil aberto. Essa referência converte cláusulas gerais, nacionais, internacionais e condicionais; o período salarial não altera esses valores. A referência salarial existente é preservada.</p></fieldset>
     <button id="save-salary" class="primary">Salvar preferências</button>
   </dialog>
   <dialog id="list-dialog" aria-labelledby="list-title-dialog"><div class="dialog-heading"><h2 id="list-title-dialog">Exportar lista</h2><button data-close="list-dialog">Fechar</button></div><p>CSV para consulta; JSON para importar de volta no FM Matt Scout.</p><p class="fine">Esses arquivos não são shortlists .fmf e não podem ser importados diretamente no Football Manager.</p><button id="export-csv">Exportar CSV básico</button><button id="export-list-json">Salvar lista JSON</button></dialog>

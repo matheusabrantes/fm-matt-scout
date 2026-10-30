@@ -68,6 +68,14 @@ class MarketFilterTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_filter({'name': 'Inválido', 'kind': kind, 'filters': {'availability': value}})
 
+    def test_converted_release_limits_preserve_fractional_raw_units(self):
+        query = {'release_fee_max': '833333.333333'}
+        saved = validate_filter({'name': 'Até €1 milhão', 'kind': 'players', 'filters': query})
+        rows = [person(1, contract={'clauses': [{'kind': 'minimum_fee_release', 'value': 833333}]}),
+                person(2, contract={'clauses': [{'kind': 'minimum_fee_release', 'value': 833334}]})]
+        self.assertEqual(saved['filters'], query)
+        self.assertEqual([r['uid'] for r in filter_rows(rows, saved['filters'])], [1])
+
     def test_listing_filters_require_explicit_status(self):
         rows = [person(1, transfer_listed=True, loan_listed=False),
                 person(2, transfer_listed=False, loan_listed=True), person(3)]

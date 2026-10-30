@@ -221,9 +221,9 @@ def serve(port=0, storage=None):
                         if not scout.meta:
                             raise ValueError('Abra um save primeiro.')
                         reference = None
-                        if 'amount' in body:
+                        if 'amount' in body or 'money_amount' in body:
                             if body.get('kind') not in ('players','staff') or type(body.get('uid')) is not int:
-                                raise ValueError('Selecione um jogador ou staff para conferir o salário.')
+                                raise ValueError('Selecione um jogador ou staff para conferir a conversão.')
                             reference = scout.index[body['kind']][body['uid']]
                         self.reply(salaries.update(scout.career, body, reference))
                         return

@@ -153,3 +153,27 @@ As esperas frágeis do teste foram ajustadas para aguardar os estados conferidos
 o HTML define ícone vazio para evitar pedidos sem a rota autorizada que geravam
 403 no console. As fontes, recursos do app e arquivos correspondentes no ZIP
 foram comparados byte a byte; assinatura e preservação do COR conferidas novamente.
+
+## Correção monetária de 30/10/2026
+
+**58 testes Python e 28 fluxos de interface passaram, com zero erros de console.**
+A regressão nova percorre calibração por rescisão do perfil aberto, salário
+preservado, mudança de período sem alterar rescisão, troca de moeda preservando
+os limites, filtro salvo em unidade original e restauração na moeda atual.
+Confere geral, nacional, estrangeira e rebaixamento, além da persistência da
+referência após recarregar e reabrir. Entradas de calibração inválidas não
+sobrescrevem preferências; referências de outra carreira/moeda não são herdadas.
+Limites fracionários resultantes da conversão permanecem pesquisáveis.
+
+No app nativo instalado, o COR mostrou **Vinícius Júnior com rescisão geral de
+€1.000.000.000 e salário de €1.720.000/mês**, tanto na tabela quanto no perfil,
+aba Contrato. A referência monetária foi salva localmente usando a cláusula do
+mesmo save já conferida no FM; a taxa salarial e o período anteriores foram
+preservados. Não há referência de jogador ou taxa fixa gravada no código.
+
+A API instalada também confirmou os dois valores por cálculos independentes.
+Os controles do teste de interface incluíram Paquetá (nacional), Tiago Gabriel
+(rebaixamento) e um contrato com rescisão estrangeira. O FM abrevia valores e o
+save armazena valores inteiros; essa conversão não certifica centavos de todas
+as cláusulas. A pequena diferença no caso de Tiago está documentada em
+`CONTRACT_READER.md`. Dívida atual e cargos restantes não mudaram nesta correção.
