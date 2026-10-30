@@ -313,3 +313,36 @@ Corinthians na célula Clube, com Sport Club Corinthians Paulista no tooltip;
 a mesma busca na aba Clubes mostrou Corinthians na coluna Nome. As referências
 continuam vinculadas ao UID do clube. Fontes/bundle/ZIP e assinatura local
 conferidos após a atualização.
+
+
+## Seleção única e lista em grupo — 30/10/2026
+
+Jogadores/staff passam a ter uma caixa por linha, com cabeçalho Selecionar.
+A barra próxima à tabela oferece Comparar (exatamente dois), Adicionar à lista,
+Limpar seleção e Remover da lista quando a lista/filtro de salvos está aberto.
+A marca Na lista informa associação sem outro controle de seleção. A seleção
+permanece entre pesquisas do mesmo tipo e é limpa ao trocar tipo/recarregar save.
+Selecionar por teclado preserva o foco; durante a gravação, os controles ficam
+desabilitados. Perfil pode selecionar/desmarcar e alterar a lista individualmente.
+
+O endpoint em grupo valida carreira, tipo, IDs inteiros existentes e ação antes
+de escrever. Adição/remoção são explícitas e idempotentes, com transação única,
+sem apagar registros ao repetir Adicionar. A lista pessoal fica separada do save.
+112 testes Python passaram, incluindo idempotência, lote inválido sem escrita,
+rollback de falha real no SQLite e isolamento entre carreira/tipo.
+
+35 fluxos Chromium passaram sem erros de console, com leitura/releitura do COR,
+comparação, exportação/importação, listas, staff, clubes e quatro larguras de tela.
+O fluxo novo cobre três selecionados para adicionar, dois para comparar, teclado
+sem perder foco, repetição sem remover, rejeição de lote inválido e remoção em grupo.
+A primeira execução parou em uma espera antiga de salários: a nacionalidade
+esperada também existia no perfil anterior. O teste passou a aguardar o nome exato
+do perfil antes de calibrar; a segunda execução terminou. Logs preservados em
+`/tmp/fm-scout-ui-20261030-unified-selection-01.log` e `-02.log`.
+Todos os testes de lista usaram armazenamento temporário isolado.
+
+A instalação AppKit/WebKit carregou o COR e mostrou uma caixa por linha no Meu
+time. Memphis e Gabriel Paulista foram marcados; o contador mostrou 2 selecionados
+e os botões Comparar/Adicionar à lista ficaram habilitados usando essa seleção.
+Não foi acionada escrita na lista pessoal durante a conferência nativa; ela foi
+comparada com o snapshot anterior. Recursos do bundle/ZIP e assinatura conferidos.

@@ -572,6 +572,21 @@ class Scout:
         with self.db() as db:
             return {r[0] for r in db.execute('SELECT uid FROM shortlist WHERE career=? AND kind=?', (self.career, kind))}
 
+    def set_shortlist(self, kind, uids, add):
+        if (not self.meta or not self.career or kind not in ('players','staff')
+                or type(add) is not bool or not isinstance(uids,list) or not uids
+                or len(uids)>len(self.index[kind])
+                or any(type(uid) is not int or uid not in self.index[kind] for uid in uids)):
+            raise ValueError('Seleção inválida para esta carreira.')
+        with self.db() as db:
+            statement = ('INSERT OR IGNORE INTO shortlist VALUES(?,?,?)' if add else
+                         'DELETE FROM shortlist WHERE career=? AND kind=? AND uid=?')
+            db.executemany(statement, [(self.career,kind,uid) for uid in dict.fromkeys(uids)])
+            changed = db.total_changes
+            count = db.execute('SELECT COUNT(*) FROM shortlist WHERE career=? AND kind=?',
+                               (self.career,kind)).fetchone()[0]
+        return {'changed':changed,'shortlist_count':count}
+
     def toggle_shortlist(self, kind, uid):
         if uid not in self.index[kind]:
             raise ValueError('Registro não encontrado neste save.')

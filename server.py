@@ -301,6 +301,11 @@ def serve(port=0, storage=None):
                             reference = scout.index[body['kind']][body['uid']]
                         self.reply(salaries.update(scout.career, body, reference))
                         return
+                    if path == 'api/shortlist/batch':
+                        if body.get('action') not in ('add','remove'):
+                            raise ValueError('Ação de lista inválida.')
+                        self.reply(scout.set_shortlist(body.get('kind'), body.get('uids'), body['action']=='add'))
+                        return
                     if path == 'api/shortlist':
                         kind = body['kind']
                         if kind not in ('players', 'staff'):

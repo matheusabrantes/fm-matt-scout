@@ -10,7 +10,7 @@ const rangeMax = {height_cm:255,stadium_seated_capacity:1000000,stadium_expansio
 const titles = {players:'Jogadores',staff:'Staff',clubs:'Clubes',shortlist:'Minha lista',squad:'Meu time'};
 let view = 'players', kind = 'players', sort = 'pa', direction = 'desc', total = 0, moreRequest = 0;
 let staffScoring = [], meta = null, groups = {}, roles = {}, saves = [], presets = [], conditions = {}, traitLabels = [];
-let rows = [], currentProfile = null, profileTab = 'attributes', comparison = new Set(), loading = false;
+let rows = [], currentProfile = null, profileTab = 'attributes', selection = new Set(), loading = false, shortlistBusy = false;
 let requestVersion = 0, profileVersion = 0, debounce, polling;
 let optionsKind = null, viewVersion = 0;
 const pickers = {};
@@ -142,10 +142,10 @@ function renderTable() {
   if (kind === 'players' && $('position').value.split(',').includes('GK') && !columns.includes('goalkeeping_sum')) columns.push('goalkeeping_sum');
   columns = orderedColumns(columns);
   const person = kind !== 'clubs';
-  $('table').querySelector('thead').innerHTML = `<tr>${person ? '<th scope="col" aria-label="Lista de observação"></th><th scope="col" aria-label="Comparar"></th>' : ''}${columns.map(key => `<th scope="col" class="${key === 'attribute_sum' ? 'sum' : !['name','club_name','positions','stadium_name','league_name','nation_id','eu_national','staff_role','staff_area','team_slot'].includes(key) ? 'numeric' : ''}" ${key === sort ? `aria-sort="${direction === 'desc' ? 'descending' : 'ascending'}"` : ''}>${key === 'positions' ? 'Posição' : `<button data-sort="${key}" title="${key === 'attribute_sum' ? 'Soma dos 36 atributos técnicos, mentais e físicos. Não inclui CA, PA, goleiro ou ocultos.' : key === 'rating' ? 'Estimativa por posição com fórmula própria visível no perfil.' : `Ordenar por ${columnLabel(key)}`}">${columnLabel(key)}${key === sort ? direction === 'desc' ? ' ↓' : ' ↑' : ''}</button>`}</th>`).join('')}</tr>`;
+  $('table').querySelector('thead').innerHTML = `<tr>${person ? '<th scope="col" class="check">Selecionar</th>' : ''}${columns.map(key => `<th scope="col" class="${key === 'attribute_sum' ? 'sum' : !['name','club_name','positions','stadium_name','league_name','nation_id','eu_national','staff_role','staff_area','team_slot'].includes(key) ? 'numeric' : ''}" ${key === sort ? `aria-sort="${direction === 'desc' ? 'descending' : 'ascending'}"` : ''}>${key === 'positions' ? 'Posição' : `<button data-sort="${key}" title="${key === 'attribute_sum' ? 'Soma dos 36 atributos técnicos, mentais e físicos. Não inclui CA, PA, goleiro ou ocultos.' : key === 'rating' ? 'Estimativa por posição com fórmula própria visível no perfil.' : `Ordenar por ${columnLabel(key)}`}">${columnLabel(key)}${key === sort ? direction === 'desc' ? ' ↓' : ' ↑' : ''}</button>`}</th>`).join('')}</tr>`;
   if(kind==='staff')$('table').querySelector('[data-sort="attribute_sum"]')?.setAttribute('title',`Soma dos ${staffScoring.length} atributos profissionais ativos, peso igual, máximo ${staffScoring.length*20}. Campos legados, personalidade e estilo não entram.`);
-  $('table').querySelector('tbody').innerHTML = rows.length ? rows.map(row => `<tr data-uid="${row.uid}" class="${currentProfile?.row.uid === row.uid ? 'selected' : ''}">${person ? `<td class="watch"><button data-watch="${row.uid}" class="${row.shortlisted ? 'active' : ''}" aria-label="${row.shortlisted ? 'Remover' : 'Adicionar'} ${esc(row.name)} ${row.shortlisted ? 'da' : 'à'} lista" aria-pressed="${row.shortlisted}">${row.shortlisted ? '●' : '○'}</button></td><td class="check"><input type="checkbox" data-compare="${row.uid}" aria-label="Comparar ${esc(row.name)}" ${comparison.has(row.uid) ? 'checked' : ''}></td>` : ''}${columns.map(key => {
-    if (key === 'name') return `<td class="name"><button data-profile="${row.uid}" ${kind==='clubs'?`title="${esc(row.name)}"`:''}>${esc((kind==='clubs'?row.short_name:null) || row.name || `Registro ${row.uid}`)}</button></td>`;
+  $('table').querySelector('tbody').innerHTML = rows.length ? rows.map(row => `<tr data-uid="${row.uid}" class="${currentProfile?.row.uid === row.uid ? 'selected' : ''}">${person ? `<td class="check"><input type="checkbox" data-select="${row.uid}" aria-label="Selecionar ${esc(row.name)}" ${selection.has(row.uid) ? 'checked' : ''}></td>` : ''}${columns.map(key => {
+    if (key === 'name') return `<td class="name"><button data-profile="${row.uid}" ${kind==='clubs'?`title="${esc(row.name)}"`:''}>${esc((kind==='clubs'?row.short_name:null) || row.name || `Registro ${row.uid}`)}</button>${person&&row.shortlisted?'<span class="fine"> · Na lista</span>':''}</td>`;
     if (key === 'league_name') return `<td>${esc(row.league_name||'Liga não lida')}</td>`;
     if (key === 'stadium_name') return `<td>${esc(row.stadium_name||'Nome não lido')}</td>`;
     if (key === 'staff_area' || key === 'staff_role') return `<td>${esc(row[key])}</td>`;
@@ -159,30 +159,48 @@ function renderTable() {
     if (moneyColumns.includes(key)) return `<td class="numeric">${key.startsWith('model_')&&row[key]!=null&&(key!=='model_value'||row.model_value_basis==='model')?'≈ ':''}${moneyFormat(row[key])}</td>`;
     if (key === 'wage' || key === 'wage_budget_weekly') return `<td class="numeric">${salaryFormat(row[key])}</td>`;
     return `<td class="numeric ${key === 'attribute_sum' ? 'sum' : key === 'ca' || key === 'pa' ? 'ability' : ''}" ${key.endsWith('_mean')?`title="${row[key.replace('_mean','_count')]} de ${row.player_count} jogadores com valor disponível"`:''}>${key === 'rating' || key.endsWith('_mean') ? row[key] == null ? '—' : row[key].toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) : num(row[key])}</td>`;
-  }).join('')}</tr>`).join('') : `<tr><td class="empty-row" colspan="${columns.length+(person?2:0)}">${view === 'shortlist' ? 'Sua lista está vazia. Use o círculo ao lado de um nome para adicionar.' : view === 'squad' && !meta.managed.length ? 'O clube do treinador não foi identificado neste save. Use o filtro de clube na aba Jogadores.' : 'Nenhum registro atende aos filtros. Reduza os critérios ou clique em Limpar.'}</td></tr>`;
+  }).join('')}</tr>`).join('') : `<tr><td class="empty-row" colspan="${columns.length+(person?1:0)}">${view === 'shortlist' ? 'Sua lista está vazia. Marque jogadores na busca e clique em Adicionar à lista.' : view === 'squad' && !meta.managed.length ? 'O clube do treinador não foi identificado neste save. Use o filtro de clube na aba Jogadores.' : 'Nenhum registro atende aos filtros. Reduza os critérios ou clique em Limpar.'}</td></tr>`;
   $('table').querySelector('thead tr').insertAdjacentHTML('afterbegin','<th scope="col" class="row-number" title="Número da linha nos filtros e na ordenação atuais">Nº</th>');
   $('table').querySelectorAll('tbody tr[data-uid]').forEach((row,index)=>row.insertAdjacentHTML('afterbegin',`<td class="row-number">${num(index+1)}</td>`));
   const empty=$('table').querySelector('.empty-row');if(empty)empty.colSpan++;
+  updateSelection();
 }
-function updateComparison() {
-  $('compare-count').textContent = `${comparison.size}/2`;
-  $('compare').disabled = comparison.size !== 2 || loading;
+function updateSelection() {
+  const unavailable=loading||shortlistBusy||!meta, count=selection.size;
+  $('selection-actions').hidden=kind==='clubs'||!meta;
+  $('selection-count').textContent=`${num(count)} ${count===1?'selecionado':'selecionados'}`;
+  $('compare').disabled=unavailable||count!==2;
+  $('selection-hint').textContent=count>2?'Marque apenas dois para comparar.':'';
+  $('list-add').disabled=unavailable||count===0;
+  $('list-add').hidden=view==='shortlist';
+  $('list-remove').disabled=unavailable||count===0;
+  $('list-remove').hidden=view!=='shortlist'&&!$('within_shortlist').checked;
+  $('clear-selection').disabled=unavailable||count===0;
+  document.querySelectorAll('[data-select],#profile-watch,#profile-select').forEach(control=>{
+    control.disabled=unavailable;
+    if(control.dataset.select)control.checked=selection.has(Number(control.dataset.select));
+  });
+  if(currentProfile&&$('profile-select'))$('profile-select').textContent=selection.has(currentProfile.row.uid)?'Desmarcar':'Selecionar';
 }
-async function toggleWatch(uid) {
-  const requestedKind=kind, requestedView=viewVersion;
-  const result = await api('shortlist',{kind,uid});
-  if(kind!==requestedKind||viewVersion!==requestedView)return;
-  if (currentProfile?.row.uid === uid) { currentProfile.shortlisted = result.shortlisted; renderProfile(); }
-  const row=rows.find(r=>r.uid===uid);
-  if(row)row.shortlisted=result.shortlisted;
-  if(row&&!result.shortlisted&&(view==='shortlist'||$('within_shortlist').checked)){
-    ++requestVersion;moreRequest=0;$('workspace').setAttribute('aria-busy','false');
-    rows=rows.filter(r=>r.uid!==uid);total--;
-  }
-  $('shortlist-count').textContent=num(result.shortlist_count);
-  $('export').disabled=!result.shortlist_count||kind==='clubs';
-  if(rows.length===0&&total>0)return refreshRows(true);
-  renderListStatus();renderTable();
+async function changeShortlist(uids, add) {
+  if(shortlistBusy||loading||kind==='clubs'||!uids.length)return;
+  const requestedKind=kind, requestedView=viewVersion, ids=new Set(uids);
+  shortlistBusy=true;updateSelection();
+  try {
+    const result=await api('shortlist/batch',{kind,uids:[...ids],action:add?'add':'remove'});
+    if(kind!==requestedKind||viewVersion!==requestedView||loading)return;
+    rows.forEach(row=>{if(ids.has(row.uid))row.shortlisted=add;});
+    if(currentProfile&&ids.has(currentProfile.row.uid)){currentProfile.shortlisted=add;renderProfile();}
+    $('shortlist-count').textContent=num(result.shortlist_count);
+    $('export').disabled=!result.shortlist_count;
+    const verb=add?'adicionado':'removido';
+    notice(`${num(result.changed)} ${verb}${result.changed===1?'':'s'} à lista.`);
+    if(view==='shortlist'||$('within_shortlist').checked){
+      if(!add)ids.forEach(uid=>selection.delete(uid));
+      return await refreshRows(true);
+    }
+    renderListStatus();renderTable();
+  } finally { shortlistBusy=false;updateSelection(); }
 }
 async function showProfile(uid) {
   const version = ++profileVersion;
@@ -259,19 +277,20 @@ function renderProfile() {
     content = '<p class="fine">Histórico registrado a partir dos saves que você abrir neste mesmo caminho. Não reconstrói o passado anterior à primeira leitura.</p>';
     content += `<table class="history-table"><thead><tr><th>Data no jogo</th><th>CA †</th><th>PA †</th><th>Soma (36)</th></tr></thead><tbody>${history.map(h => `<tr><td>${fmtDate(h.date)}</td><td>${num(h.ca)}</td><td>${num(h.pa)}</td><td>${num(h.attribute_sum)}</td></tr>`).join('')}</tbody></table>`;
   }
-  $('profile').innerHTML = `<div class="profile-heading"><h2>${esc((kind==='clubs'?r.short_name:null) || r.name || `Registro ${r.uid}`)}</h2><p>${esc(kind==='clubs'?r.nation_name || '':r.club_short_name || r.club_name || 'Sem vínculo decodificado')}${player ? ` · ${esc(r.natural_positions?.join(', ') || '')}` : ''}</p>${kind !== 'clubs' ? `<div class="profile-actions"><button id="profile-watch">${shortlisted ? 'Remover da lista' : 'Adicionar à lista'}</button><button id="profile-compare">${comparison.has(r.uid) ? 'Tirar da comparação' : 'Comparar jogador'}</button></div>` : ''}</div><div class="profile-tabs">${Object.entries(tabs).map(([key,label])=>`<button data-profile-tab="${key}" class="${key===profileTab?'active':''}" aria-pressed="${key===profileTab}">${label}</button>`).join('')}</div><div class="profile-content">${content}<p class="fine">† CA/PA, altura, salário, habilidades profissionais, cargos por assento e liga atual: leitura experimental. Conferências pontuais estão documentadas; não houve validação de todos os registros.</p></div>`;
+  $('profile').innerHTML = `<div class="profile-heading"><h2>${esc((kind==='clubs'?r.short_name:null) || r.name || `Registro ${r.uid}`)}</h2><p>${esc(kind==='clubs'?r.nation_name || '':r.club_short_name || r.club_name || 'Sem vínculo decodificado')}${player ? ` · ${esc(r.natural_positions?.join(', ') || '')}` : ''}</p>${kind !== 'clubs' ? `<div class="profile-actions"><button id="profile-watch">${shortlisted ? 'Remover da lista' : 'Adicionar à lista'}</button><button id="profile-select">${selection.has(r.uid) ? 'Desmarcar' : 'Selecionar'}</button></div>` : ''}</div><div class="profile-tabs">${Object.entries(tabs).map(([key,label])=>`<button data-profile-tab="${key}" class="${key===profileTab?'active':''}" aria-pressed="${key===profileTab}">${label}</button>`).join('')}</div><div class="profile-content">${content}<p class="fine">† CA/PA, altura, salário, habilidades profissionais, cargos por assento e liga atual: leitura experimental. Conferências pontuais estão documentadas; não houve validação de todos os registros.</p></div>`;
+  updateSelection();
 }
 function attributeLabel(key) {
   return Object.values(groups).map(group=>group[key]).find(Boolean) || key;
 }
-function toggleCompare(uid) {
-  if (comparison.has(uid)) comparison.delete(uid);
-  else if (comparison.size < 2) comparison.add(uid);
-  else { notice('Escolha até dois registros. Desmarque um para trocar.'); renderTable(); return; }
-  updateComparison(); renderTable(); if (currentProfile) renderProfile();
+function toggleSelection(uid) {
+  if(loading||shortlistBusy||kind==='clubs')return;
+  if(selection.has(uid))selection.delete(uid);else selection.add(uid);
+  updateSelection();
 }
 async function comparePlayers() {
-  const data = await Promise.all([...comparison].map(uid=>api(`profile?kind=${kind}&uid=${uid}`)));
+  if(selection.size!==2||loading||shortlistBusy||kind==='clubs')return;
+  const data = await Promise.all([...selection].map(uid=>api(`profile?kind=${kind}&uid=${uid}`)));
   const [a,b] = data.map(d=>d.row);
   const line = (label,av,bv,inverse=false,highlight=true) => {
     const comparable = highlight && typeof av === 'number' && typeof bv === 'number';
@@ -338,7 +357,7 @@ async function changeView(next) {
   const version=++viewVersion;++requestVersion;
   const oldKind = kind;
   view = next; kind = next === 'staff' ? 'staff' : next === 'clubs' ? 'clubs' : 'players';
-  if (oldKind !== kind) { comparison.clear(); updateComparison(); sort = kind === 'clubs' ? 'reputation' : 'pa'; resetFilters(); currentProfile = null; ++profileVersion; }
+  if (oldKind !== kind) { selection.clear(); updateSelection(); sort = kind === 'clubs' ? 'reputation' : 'pa'; resetFilters(); currentProfile = null; ++profileVersion; }
   document.querySelectorAll('[data-view]').forEach(button=>button.toggleAttribute('aria-current',button.dataset.view===view));
   document.querySelector('[data-view="'+view+'"]').setAttribute('aria-current','page');
   $('list-title').textContent = view === 'squad' && meta?.managed?.length ? meta.managed[0].club_short_name || meta.managed[0].club_name : titles[view];
@@ -391,6 +410,7 @@ function lockLoading(value) {
   $('workspace').setAttribute('aria-busy',String(value));
   if (value) { $('compare').disabled = true; $('export').disabled = true; }
   else $('remove-preset').disabled=!$('preset').value;
+  updateSelection();
 }
 window.loadSave = action(async path => {
   if (loading) return;
@@ -405,7 +425,7 @@ async function poll() {
     if (data.loading) { notice(data.progress); $('footer-state').textContent = 'Lendo cópia do save…'; polling = setTimeout(poll,600); return; }
     lockLoading(false);
     if (data.error) { notice(data.error,true); if (meta) await changeView(view); return; }
-    meta = data.meta; $('reload').disabled=!meta;optionsKind=null;currentProfile = null; comparison.clear(); updateComparison();
+    meta = data.meta; $('reload').disabled=!meta;optionsKind=null;currentProfile = null; selection.clear(); updateSelection();
     if (meta) {
       salaryPrefs=await api('salaries');updateSalaryLabels();$('salary-settings').disabled=false;
       $('save-name').textContent = meta.file;
@@ -520,7 +540,6 @@ document.addEventListener('click',action(async event => {
   if (button.dataset.pitch) { const chosen=new Set($('position').value.split(',').filter(Boolean));if(chosen.has(button.dataset.pitch))chosen.delete(button.dataset.pitch);else chosen.add(button.dataset.pitch);$('position').value=[...chosen].join(',');updatePitch();syncMirrors();return refreshRows(true); }
   if (button.dataset.sort) { direction = sort === button.dataset.sort && direction === 'desc' ? 'asc' : 'desc'; sort = button.dataset.sort; return refreshRows(true); }
   if (button.dataset.profile) return showProfile(Number(button.dataset.profile));
-  if (button.dataset.watch) return toggleWatch(Number(button.dataset.watch));
   if (button.dataset.profileTab) { profileTab = button.dataset.profileTab; renderProfile(); return; }
   if (button.dataset.save) return window.loadSave(saves[Number(button.dataset.save)].path);
   if (button.dataset.close) { $(button.dataset.close).close(); return; }
@@ -560,6 +579,9 @@ document.addEventListener('click',action(async event => {
     case 'clear': resetFilters(); return refreshRows(true);
     case 'next': return refreshRows(false);
     case 'compare': return comparePlayers();
+    case 'list-add': return changeShortlist([...selection],true);
+    case 'list-remove': return changeShortlist([...selection],false);
+    case 'clear-selection': selection.clear();updateSelection();return;
     case 'columns': {
       renderColumnOptions();
       $('columns-dialog').showModal(); break;
@@ -569,8 +591,8 @@ document.addEventListener('click',action(async event => {
       await api('layouts',visibleColumns);$('columns-dialog').close();return refreshRows();
     }
     case 'reset-columns': visibleColumns[kind]=[...baseColumns[kind]];await api('layouts',visibleColumns);$('columns-dialog').close();return refreshRows();
-    case 'profile-compare': toggleCompare(currentProfile.row.uid); break;
-    case 'profile-watch': return toggleWatch(currentProfile.row.uid);
+    case 'profile-select': toggleSelection(currentProfile.row.uid); break;
+    case 'profile-watch': return changeShortlist([currentProfile.row.uid],!currentProfile.shortlisted);
     case 'export': $('list-dialog').showModal();break;
     case 'export-csv': {
       const response = await fetch(`api/export?kind=${kind}`);
@@ -625,7 +647,7 @@ document.addEventListener('change',action(async event => {
     if(event.target.value)conditions[event.target.dataset.condition]=event.target.value;else delete conditions[event.target.dataset.condition];
     renderConditions();return refreshRows(true);
   }
-  if (event.target.dataset.compare) { toggleCompare(Number(event.target.dataset.compare)); return; }
+  if (event.target.dataset.select) { toggleSelection(Number(event.target.dataset.select)); return; }
   if (event.target.id==='preset') { $('remove-preset').disabled=!event.target.value; return; }
   if (event.target.id==='preset-file') {
     const file=event.target.files[0]; if (!file) return;

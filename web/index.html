@@ -22,7 +22,7 @@
     <button data-view="clubs">Clubes</button>
     <button data-view="shortlist">Minha lista <span id="shortlist-count">0</span></button>
     <button data-view="squad">Meu time</button>
-    <div class="tab-end"><button id="columns">Colunas…</button><button id="list-import">Importar lista</button><button id="compare" disabled>Comparar <span id="compare-count">0/2</span></button><button id="export" disabled>Exportar lista</button></div>
+    <div class="tab-end"><button id="columns">Colunas…</button><button id="list-import">Importar lista</button><button id="export" disabled>Exportar lista</button></div>
   </nav>
   <section id="filters" class="ribbon" aria-label="Filtros" hidden>
     <label class="search-field">Pesquisar<input id="search" type="search" placeholder="Nome do jogador ou clube" autocomplete="off"></label>
@@ -58,6 +58,14 @@
     <section id="workspace" hidden>
       <div class="results">
         <div class="list-heading"><h1 id="list-title">Jogadores</h1><span id="result-count"></span><span id="sort-summary">PA · desempate pela soma</span></div>
+        <div id="selection-actions" class="selection-actions" role="group" aria-label="Ações dos selecionados" hidden>
+          <span id="selection-count" role="status" aria-live="polite">0 selecionados</span>
+          <button id="compare" title="Selecione exatamente dois registros para comparar" disabled>Comparar</button>
+          <button id="list-add" disabled>Adicionar à lista</button>
+          <button id="list-remove" disabled hidden>Remover da lista</button>
+          <button id="clear-selection" disabled>Limpar seleção</button>
+          <span id="selection-hint" class="fine"></span>
+        </div>
         <div id="opportunities" class="opportunities" role="group" aria-label="Busca rápida de jogadores">
           <input id="availability" type="hidden">
           <span>Oportunidades</span>

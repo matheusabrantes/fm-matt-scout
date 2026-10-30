@@ -40,6 +40,19 @@ vm.runInNewContext(source + `
   visibleColumns.players=['name','future_metric'];renderColumnOptions();
   assert($('column-options').innerHTML.includes('Outras colunas salvas'));
   assert($('column-options').innerHTML.includes('data-column="future_metric" type="checkbox" checked'));
+  meta={managed:[]};kind='players';view='players';currentProfile=null;selection.clear();
+  rows=[{uid:1,name:'A'},{uid:2,name:'B'},{uid:3,name:'C',shortlisted:true}];visibleColumns.players=['name'];renderTable();
+  const selectionHTML=$('table').querySelector('tbody').innerHTML;
+  assert.equal([...selectionHTML.matchAll(/data-select=/g)].length,3);
+  assert(!selectionHTML.includes('data-watch'));assert(selectionHTML.includes('Na lista'));
+  toggleSelection(1);assert.equal($('compare').disabled,true);assert.equal($('list-add').disabled,false);
+  toggleSelection(2);assert.equal($('compare').disabled,false);
+  toggleSelection(3);assert.equal(selection.size,3);assert.equal($('compare').disabled,true);
+  assert.equal($('selection-count').textContent,'3 selecionados');
+  shortlistBusy=true;updateSelection();assert($('list-add').disabled);assert($('compare').disabled);
+  shortlistBusy=false;toggleSelection(3);assert.equal($('compare').disabled,false);
+  kind='clubs';updateSelection();assert($('selection-actions').hidden);
+  kind='players';selection.clear();meta=null;rows=[];
   salaryPrefs={currency:'EUR',period:'month',rate:1.25,money_rate:2,money_source:'clause'};
   for(const period of ['week','month','year']) {
     salaryPrefs.period=period;

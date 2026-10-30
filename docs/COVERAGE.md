@@ -70,6 +70,7 @@ Vínculos médicos sem termos completos também identificam Médico e Diretor cl
 |---|---|
 | Ordenação e atributos como colunas | Funcional. |
 | Colunas personalizadas e layout persistente | Funcional por tipo de lista, também acessível pelo botão direito no cabeçalho. |
+| Seleção única e lista em grupo | Uma caixa por jogador/staff alimenta Comparar e Adicionar à lista. Comparar exige dois; adição aceita vários, idempotente. Remoção em grupo disponível na lista/filtro de salvos. Contagem, limpar seleção e marca Na lista; teclado mantém foco. Escritas atômicas por carreira/tipo, com IDs validados. |
 | Comparação | Funcional, dois registros de jogadores ou staff. Resumo no topo com atributos vencidos, empates e dados ausentes; vencedor destacado em verde e texto. Jogadores de linha e comparação mista usam 36 atributos técnicos/mentais/físicos, sem seção ou destaque de goleiro. Se ambos têm familiaridade GK ≥15, os 11 de goleiro entram na tabela e no placar, totalizando 47. Pesos iguais; idade, CA/PA, soma, ocultos e personalidade ficam fora do placar dos jogadores. Staff conta as 21 competências profissionais ativas com pesos iguais; personalidade aparece separada e fica fora do placar. |
 | Listas | Persistência local, CSV básico e JSON portátil. Importação compara ID, nome e nascimento. |
 | Shortlist `.fmf` importável no FM | Pendente: exige implementação/validação do formato real e um roundtrip no jogo. |
