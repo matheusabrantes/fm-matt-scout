@@ -18,6 +18,10 @@ const document = {
 };
 const source = fs.readFileSync(path.join(__dirname,'../web/app.js'),'utf8').replace('action(init)();','');
 vm.runInNewContext(source + `
+  assert(baseColumns.players.includes('model_value'));
+  assert(baseColumns.players.includes('model_fee'));
+  assert(!baseColumns.players.includes('value'));
+  assert(baseColumns.players.indexOf('model_value')===baseColumns.players.indexOf('club_name')+1);
   salaryPrefs={currency:'EUR',period:'month',rate:1.25,money_rate:2,money_source:'clause'};
   for(const period of ['week','month','year']) {
     salaryPrefs.period=period;
@@ -58,7 +62,7 @@ vm.runInNewContext(source + `
   currentProfile.row.loans=[];renderProfile();assert($('profile').innerHTML.includes('não significa dívida líquida zero'));
   salaryPrefs.period='month';
   kind='players';profileTab='transfer';currentProfile={row:{uid:2,name:'QA player',value:500,transfer_value:500},history:[],shortlisted:false};renderProfile();
-  assert($('profile').innerHTML.includes('Valor de mercado · EUR'));
+  assert($('profile').innerHTML.includes('Valor lido do save · EUR'));
   assert($('profile').innerHTML.includes('1.000'));
   Object.assign(currentProfile.row,{model_value:500,model_value_low:425,model_value_high:575,model_fee:600,model_fee_low:510,model_fee_high:690,model_value_basis:'save',model_fee_basis:'save'});renderProfile();
   assert($('profile').innerHTML.includes('Faixa de compra do modelo'));

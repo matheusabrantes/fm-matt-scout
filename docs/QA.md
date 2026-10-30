@@ -239,3 +239,32 @@ Isso confirma a apresentação/cálculo na instalação, não um preço de trans
 validado no FM. Um texto antigo do rodapé foi corrigido para distinguir preço
 aceito de estimativa; o teste JavaScript verifica a nova redação.
 Layouts/calibração monetária e COR original mantiveram os hashes anteriores.
+
+
+## Colunas financeiras padrão — 30/10/2026
+
+Valor de mercado agora usa `model_value` e aparece ao lado do clube, seguido de
+Compra estimada (`model_fee`). Valor bruto continua opcional como Valor lido do
+save, sem alterar os dados ou as fórmulas. Layouts sem versão migram uma vez:
+remove a coluna bruta da visualização padrão, insere as duas combinadas e
+preserva a ordem relativa das demais colunas e as listas de staff/clubes.
+O marcador interno não é exposto pela API. Escolhas salvas depois da migração
+continuam válidas, inclusive remover as novas colunas ou selecionar o valor bruto.
+
+104 testes Python passaram, incluindo seis novos controles de layouts: ausência
+de arquivo, migração idempotente, layout mínimo, preferência posterior,
+recusa de formato/versão inválidos sem reescrever o arquivo e GET/POST HTTP real
+com rejeição de coluna inválida. O teste JavaScript real verificou defaults,
+nomes e apresentação de valores/estimativas. A suíte Chromium de 34 fluxos foi
+executada na etapa anterior do modelo; não foi repetida para esta mudança de
+padrões. Nenhuma fórmula monetária foi alterada.
+
+A configuração deste Mac migrou automaticamente; staff/clubes e calibração
+monetária foram preservados. Cópia anterior do layout mantida localmente em
+`/tmp/fm-scout-layout-before-market-defaults-20261030.json`.
+
+A instalação atualizada foi aberta e carregou o COR. A tabela nativa mostrou
+Valor de mercado · EUR e Compra estimada · EUR imediatamente após Clube, sem
+seleção manual de colunas. Messi/Kane passaram a mostrar estimativas com ≈,
+enquanto o valor lido de Mbappé permaneceu sem essa marca. Não há coluna bruta
+na visualização padrão. Bundle/ZIP e assinatura local conferidos novamente.

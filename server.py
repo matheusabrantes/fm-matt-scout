@@ -21,6 +21,31 @@ ROOT = Path(__file__).parent
 SAVE_DIR = Path.home() / 'Library/Application Support/Sports Interactive/Football Manager 26/games'
 
 
+
+def read_layouts(path):
+    if not path.exists():
+        return {}
+    layout = json.loads(path.read_text())
+    if not isinstance(layout, dict):
+        raise ValueError('Layout inválido.')
+    version = layout.pop('_version', 0)
+    if version not in (0, 1):
+        raise ValueError('Versão de layout não suportada.')
+    if version == 0:
+        if 'players' in layout:
+            if not isinstance(layout['players'], list):
+                raise ValueError('Layout de jogadores inválido.')
+            columns = [c for c in layout['players'] if c not in ('value', 'model_value', 'model_fee')]
+            anchor = 'club_name' if 'club_name' in columns else 'name'
+            index = columns.index(anchor) + 1
+            columns[index:index] = ['model_value', 'model_fee']
+            layout['players'] = columns
+        temporary = path.with_suffix('.tmp')
+        temporary.write_text(json.dumps({**layout, '_version': 1}))
+        temporary.replace(path)
+    return layout
+
+
 def serve(port=0, storage=None):
     token = secrets.token_urlsafe(32)
     scout = Scout(storage or Path.home() / 'Library/Application Support/FM Matt Scout/scout.sqlite3')
@@ -96,7 +121,7 @@ def serve(port=0, storage=None):
                         self.reply({'version': 1, 'presets': presets.read()})
                         return
                     if path == 'api/layouts':
-                        self.reply(json.loads(layout_path.read_text()) if layout_path.exists() else {})
+                        self.reply(read_layouts(layout_path))
                         return
                     if state['loading']:
                         self.reply({'error': 'Aguarde a leitura do save terminar.'}, 409)
@@ -191,10 +216,10 @@ def serve(port=0, storage=None):
                 with lock:
                     if path == 'api/layouts':
                         for key, value in body.items():
-                            if key not in scout.rows or not isinstance(value, list) or not 1 <= len(value) <= 80 or 'name' not in value or any(c not in layout_columns for c in value):
-                                raise ValueError('Layout inválido. Preserve a coluna Nome e use até 80 colunas.')
+                            if key not in scout.rows or not isinstance(value, list) or not 1 <= len(value) <= 82 or 'name' not in value or any(c not in layout_columns for c in value):
+                                raise ValueError('Layout inválido. Preserve a coluna Nome e use até 82 colunas.')
                         temporary = layout_path.with_suffix('.tmp')
-                        temporary.write_text(json.dumps(body))
+                        temporary.write_text(json.dumps({**body, '_version': 1}))
                         temporary.replace(layout_path)
                         self.reply({'ok': True})
                         return
