@@ -3,8 +3,8 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;',
 const num = value => value == null ? '—' : Number(value).toLocaleString('pt-BR');
 const fmtDate = value => value ? new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR') : 'Não disponível';
 const fieldIds = ['search','position','age_min','age_max','ca_min','pa_min','sum_min','club','nation','league','contract_before','rating_min','free','squad_scope','squad','availability'];
-const baseColumns = {players:['name','age','positions','club_name','model_value','model_fee','team_slot','nation_id','eu_national','ca','pa','attribute_sum','rating'],staff:['name','staff_role','staff_area','age','club_name','ca','pa','attribute_sum','nation_id'],clubs:['name','nation_id','reputation','player_count','ca_mean','pa_mean','age_mean']};
-let visibleColumns = structuredClone(baseColumns), searchTab = 'general';
+const baseColumns = {players:['name','age','positions','nation_id','eu_national','club_name','team_slot','ca','pa','rating','attribute_sum','model_value','model_fee'],staff:['name','age','nation_id','staff_role','staff_area','club_name','ca','pa','attribute_sum'],clubs:['name','nation_id','reputation','player_count','ca_mean','pa_mean','age_mean']};
+let columnGroups = {}, visibleColumns = structuredClone(baseColumns), searchTab = 'general';
 const rangeLabels = {height_cm:'Altura (cm) †',stadium_seated_capacity:'Estádio: lugares sentados',stadium_expansion_capacity:'Estádio: capacidade de expansão',age:'Idade',ca:'Capacidade atual (CA) †',pa:'Potencial (PA) †',ability_difference:'Diferença PA − CA †',sum:'Soma dos atributos (36)',rating:'Nota atual (estimativa)',rep_home:'Reputação nacional',rep_current:'Reputação atual',rep_world:'Reputação mundial',club_reputation:'Reputação do clube',reputation:'Reputação do clube',model_value:'Valor de mercado · unidade do save',model_fee:'Compra estimada · unidade do save',value:'Valor lido do save · unidade do save',wage:'Salário · unidade do save †',release_fee:'Rescisão geral ou do tipo selecionado · unidade do save',balance:'Saldo · unidade do save',transfer_budget_remaining:'Orçamento de transferências · unidade do save',wage_budget_weekly:'Orçamento salarial · unidade do save'};
 const rangeMax = {height_cm:255,stadium_seated_capacity:1000000,stadium_expansion_capacity:1000000,age:100,ca:200,pa:200,ability_difference:200,sum:720,rating:100,rep_home:10000,rep_current:10000,rep_world:10000,club_reputation:10000,reputation:10000,model_value:1e12,model_fee:1e12,value:1e12,wage:1e12,release_fee:1e12,balance:1e12,transfer_budget_remaining:1e12,wage_budget_weekly:1e12};
 const titles = {players:'Jogadores',staff:'Staff',clubs:'Clubes',shortlist:'Minha lista',squad:'Meu time'};
@@ -125,11 +125,24 @@ function columnLabel(key) { if(moneyColumns.includes(key))return `${({release_fe
 labels.stadium_name='Estádio';labels.staff_role='Função †';labels.league_name='Liga do clube †';labels.staff_area='Área do staff';
 function euLabel(value) { return value===true?'Sim':value===false?'Não':'Indisponível'; }
 function nationalityLabel(row) { return row.nationalities?.map(n=>`${n.name||'Nome indisponível'}${n.id===row.nation_id?' (principal)':''}${n.is_eu?' · UE':''}`).join('; ') || 'Nome indisponível'; }
+function orderedColumns(columns, forKind = kind) {
+  const order = Object.values(columnGroups[forKind] || {}).flat();
+  const rank = key => { const index = order.indexOf(key); return index < 0 ? order.length : index; };
+  return [...columns].sort((a,b) => rank(a)-rank(b));
+}
+function renderColumnOptions() {
+  const sections = {...columnGroups[kind]};
+  const known = Object.values(sections).flat();
+  const other = visibleColumns[kind].filter(key => !known.includes(key));
+  if(other.length)sections['Outras colunas salvas']=other;
+  $('column-options').innerHTML=Object.entries(sections).map(([group,keys])=>`<h3>${esc(group)}</h3><div class="column-grid">${keys.map(key=>`<label class="checkbox-label"><input data-column="${key}" type="checkbox" ${visibleColumns[kind].includes(key)?'checked':''} ${key==='name'?'disabled':''}>${esc(columnLabel(key))}</label>`).join('')}</div>`).join('');
+}
 function renderTable() {
-  const columns = [...visibleColumns[kind]];
+  let columns = [...visibleColumns[kind]];
   if (kind === 'players' && $('position').value.split(',').includes('GK') && !columns.includes('goalkeeping_sum')) columns.push('goalkeeping_sum');
+  columns = orderedColumns(columns);
   const person = kind !== 'clubs';
-  $('table').querySelector('thead').innerHTML = `<tr>${person ? '<th scope="col" aria-label="Lista de observação"></th><th scope="col" aria-label="Comparar"></th>' : ''}${columns.map(key => `<th scope="col" class="${key === 'attribute_sum' ? 'sum' : key !== 'name' && key !== 'club_name' && key !== 'positions' && key !== 'stadium_name' ? 'numeric' : ''}" ${key === sort ? `aria-sort="${direction === 'desc' ? 'descending' : 'ascending'}"` : ''}>${key === 'positions' ? 'Posição' : `<button data-sort="${key}" title="${key === 'attribute_sum' ? 'Soma dos 36 atributos técnicos, mentais e físicos. Não inclui CA, PA, goleiro ou ocultos.' : key === 'rating' ? 'Estimativa por posição com fórmula própria visível no perfil.' : `Ordenar por ${columnLabel(key)}`}">${columnLabel(key)}${key === sort ? direction === 'desc' ? ' ↓' : ' ↑' : ''}</button>`}</th>`).join('')}</tr>`;
+  $('table').querySelector('thead').innerHTML = `<tr>${person ? '<th scope="col" aria-label="Lista de observação"></th><th scope="col" aria-label="Comparar"></th>' : ''}${columns.map(key => `<th scope="col" class="${key === 'attribute_sum' ? 'sum' : !['name','club_name','positions','stadium_name','league_name','nation_id','eu_national','staff_role','staff_area','team_slot'].includes(key) ? 'numeric' : ''}" ${key === sort ? `aria-sort="${direction === 'desc' ? 'descending' : 'ascending'}"` : ''}>${key === 'positions' ? 'Posição' : `<button data-sort="${key}" title="${key === 'attribute_sum' ? 'Soma dos 36 atributos técnicos, mentais e físicos. Não inclui CA, PA, goleiro ou ocultos.' : key === 'rating' ? 'Estimativa por posição com fórmula própria visível no perfil.' : `Ordenar por ${columnLabel(key)}`}">${columnLabel(key)}${key === sort ? direction === 'desc' ? ' ↓' : ' ↑' : ''}</button>`}</th>`).join('')}</tr>`;
   if(kind==='staff')$('table').querySelector('[data-sort="attribute_sum"]')?.setAttribute('title',`Soma dos ${staffScoring.length} atributos profissionais ativos, peso igual, máximo ${staffScoring.length*20}. Campos legados, personalidade e estilo não entram.`);
   $('table').querySelector('tbody').innerHTML = rows.length ? rows.map(row => `<tr data-uid="${row.uid}" class="${currentProfile?.row.uid === row.uid ? 'selected' : ''}">${person ? `<td class="watch"><button data-watch="${row.uid}" class="${row.shortlisted ? 'active' : ''}" aria-label="${row.shortlisted ? 'Remover' : 'Adicionar'} ${esc(row.name)} ${row.shortlisted ? 'da' : 'à'} lista" aria-pressed="${row.shortlisted}">${row.shortlisted ? '●' : '○'}</button></td><td class="check"><input type="checkbox" data-compare="${row.uid}" aria-label="Comparar ${esc(row.name)}" ${comparison.has(row.uid) ? 'checked' : ''}></td>` : ''}${columns.map(key => {
     if (key === 'name') return `<td class="name"><button data-profile="${row.uid}">${esc(row.name || `Registro ${row.uid}`)}</button></td>`;
@@ -548,10 +561,7 @@ document.addEventListener('click',action(async event => {
     case 'next': return refreshRows(false);
     case 'compare': return comparePlayers();
     case 'columns': {
-      const extras=kind==='players'?['model_value','model_fee','height_cm','ability_difference','nation_id','eu_national','goalkeeping_sum','rep_home','rep_current','rep_world','wage','value','release_fee','release_fee_domestic','release_fee_foreign']:kind==='staff'?['ability_difference','wage','eu_national','staff_area','staff_role','attribute_sum']:['stadium_name','ca_count','pa_count','age_count','balance','transfer_budget_remaining','wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity'];
-      const options=[...new Set([...baseColumns[kind],'league_name',...extras])];
-      const attributeGroups=kind==='players'?Object.entries(groups).filter(([g])=>g!=='Profissionais'):kind==='staff'?[['Profissionais',groups.Profissionais],['Personalidade',groups.Personalidade]]:[];
-      $('column-options').innerHTML = `<div class="column-grid">${options.map(key=>`<label class="checkbox-label"><input data-column="${key}" type="checkbox" ${visibleColumns[kind].includes(key)?'checked':''} ${key==='name'?'disabled':''}>${esc(columnLabel(key))}</label>`).join('')}</div>${attributeGroups.map(([group,fields])=>`<h3>${esc(group)}</h3><div class="column-grid">${Object.entries(fields).map(([key,label])=>`<label class="checkbox-label"><input data-column="attr_${key}" type="checkbox" ${visibleColumns[kind].includes('attr_'+key)?'checked':''}>${esc(label)}</label>`).join('')}</div>`).join('')}`;
+      renderColumnOptions();
       $('columns-dialog').showModal(); break;
     }
     case 'save-columns': {
@@ -636,7 +646,7 @@ $('search').addEventListener('input',()=>{clearTimeout(debounce);debounce=setTim
 $('picker-search').addEventListener('input',renderPickerOptions);
 document.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&event.key==='f'){event.preventDefault();$('search').focus();}});
 async function init() {
-  const data=await api('status'); groups=data.groups;staffScoring=data.staff_scoring_attributes; roles=data.roles; saves=data.saves;traitLabels=data.traits;buildSearch();saveButtons($('save-list')); await refreshPresets();
+  const data=await api('status'); groups=data.groups;columnGroups=data.column_groups;staffScoring=data.staff_scoring_attributes; roles=data.roles; saves=data.saves;traitLabels=data.traits;buildSearch();saveButtons($('save-list')); await refreshPresets();
   const layout=await api('layouts');visibleColumns={...visibleColumns,...layout};
   $('trait-grid').innerHTML=traitLabels.map(t=>`<label class="checkbox-label"><input type="checkbox" data-trait="${t.id}">${esc(t.name)}</label>`).join('');
   $('advanced').addEventListener('close',()=>{$('advanced-button').setAttribute('aria-expanded','false');});

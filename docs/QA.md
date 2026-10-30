@@ -268,3 +268,28 @@ Valor de mercado · EUR e Compra estimada · EUR imediatamente após Clube, sem
 seleção manual de colunas. Messi/Kane passaram a mostrar estimativas com ≈,
 enquanto o valor lido de Mbappé permaneceu sem essa marca. Não há coluna bruta
 na visualização padrão. Bundle/ZIP e assinatura local conferidos novamente.
+
+
+## Ordem lógica das colunas — 30/10/2026
+
+Uma definição de grupos compartilhada na API orienta tabela, seletor e ordem
+salva de jogadores, staff e clubes. A migração de layouts para versão 2
+reorganiza as seleções existentes; não reativa campos que o usuário removeu
+após a primeira migração financeira. Valores desconhecidos da definição ficam
+no fim, preservando sua ordem relativa e disponíveis no seletor. Grupos do staff
+separam gestão/liderança, treinamento, recrutamento, saúde, legado e personalidade.
+Cabeçalhos textuais passam a alinhar com suas células.
+
+106 testes Python e o teste JavaScript real passaram. Cobrem a migração nas três
+listas sem mudar a seleção, idempotência, preservação de campos desconhecidos,
+todos os atributos de staff sem duplicação, tabela e seletor com a mesma ordem,
+e persistência via HTTP. Não houve mudança nos cálculos ou leitores do save.
+A suíte completa Chromium não foi repetida para esta alteração de organização.
+
+Na instalação AppKit/WebKit, o COR foi carregado e os cabeçalhos das três listas
+foram conferidos: jogadores com identificação/vínculo antes de capacidade e
+mercado; staff com idade/nacionalidade antes de função/área/clube; clubes com
+liga antes de reputação, médias, finanças e estádio. O seletor do staff foi
+inspecionado visualmente com categorias e seleções preservadas. A migração
+manteve exatamente o conjunto de colunas de cada lista deste Mac; cópia anterior
+em `/tmp/fm-scout-layout-before-logical-order-20261030.json`.

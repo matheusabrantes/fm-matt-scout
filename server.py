@@ -22,6 +22,48 @@ SAVE_DIR = Path.home() / 'Library/Application Support/Sports Interactive/Footbal
 
 
 
+COLUMN_GROUPS = {
+    'players': {
+        'Identificação': ['name','age','positions','nation_id','eu_national'],
+        'Clube e equipe': ['club_name','team_slot','league_name'],
+        'Capacidade e avaliação': ['ca','pa','ability_difference','rating','attribute_sum','goalkeeping_sum'],
+        'Mercado e contrato': ['model_value','model_fee','wage','release_fee','release_fee_domestic','release_fee_foreign','value'],
+        'Características': ['height_cm'],
+        'Reputação': ['rep_home','rep_current','rep_world'],
+        **{group: [f'attr_{key}' for key in fields]
+           for group, fields in GROUPS.items() if group != 'Profissionais'},
+    },
+    'staff': {
+        'Identificação': ['name','age','nation_id','eu_national'],
+        'Cargo e clube': ['staff_role','staff_area','club_name','league_name'],
+        'Capacidade e avaliação': ['ca','pa','ability_difference','attribute_sum'],
+        'Contrato': ['wage'],
+        'Gestão e liderança': [f'attr_{key}' for key in ('authority','people_management','motivating','working_with_youngsters','determination')],
+        'Treinamento': [f'attr_{key}' for key in ('attacking','defending','possession','technical','tactical','tactical_knowledge','fitness','goalkeeping','set_pieces')],
+        'Recrutamento': [f'attr_{key}' for key in ('judging_player_ability','judging_player_potential','judging_player_data','judging_staff_ability','negotiating')],
+        'Saúde': ['attr_physiotherapy','attr_sports_science'],
+        'Goleiros (legado)': ['attr_gk_handling','attr_gk_distribution'],
+        'Personalidade': [f'attr_{key}' for key in GROUPS['Personalidade']],
+    },
+    'clubs': {
+        'Identidade': ['name','nation_id','league_name'],
+        'Reputação': ['reputation'],
+        'Elenco': ['player_count','ca_mean','pa_mean','age_mean'],
+        'Finanças': ['balance','transfer_budget_remaining','wage_budget_weekly'],
+        'Estádio': ['stadium_name','stadium_seated_capacity','stadium_expansion_capacity'],
+        'Cobertura das médias': ['ca_count','pa_count','age_count'],
+    },
+}
+COLUMN_ORDER = {kind: {column: index for index, column in enumerate(
+    column for columns in groups.values() for column in columns)}
+    for kind, groups in COLUMN_GROUPS.items()}
+
+
+def ordered_columns(columns, kind):
+    order = COLUMN_ORDER[kind]
+    return sorted(columns, key=lambda column: order.get(column, len(order)))
+
+
 def read_layouts(path):
     if not path.exists():
         return {}
@@ -29,7 +71,7 @@ def read_layouts(path):
     if not isinstance(layout, dict):
         raise ValueError('Layout inválido.')
     version = layout.pop('_version', 0)
-    if version not in (0, 1):
+    if version not in (0, 1, 2):
         raise ValueError('Versão de layout não suportada.')
     if version == 0:
         if 'players' in layout:
@@ -40,8 +82,14 @@ def read_layouts(path):
             index = columns.index(anchor) + 1
             columns[index:index] = ['model_value', 'model_fee']
             layout['players'] = columns
+    if version < 2:
+        for kind in COLUMN_GROUPS:
+            if kind in layout:
+                if not isinstance(layout[kind], list) or any(not isinstance(c, str) for c in layout[kind]):
+                    raise ValueError('Layout inválido.')
+                layout[kind] = ordered_columns(layout[kind], kind)
         temporary = path.with_suffix('.tmp')
-        temporary.write_text(json.dumps({**layout, '_version': 1}))
+        temporary.write_text(json.dumps({**layout, '_version': 2}))
         temporary.replace(path)
     return layout
 
@@ -113,7 +161,7 @@ def serve(port=0, storage=None):
                         self.reply({**state, 'meta': scout.meta,
                                     'saves': [{'path': str(p), 'name': p.name, 'size': p.stat().st_size}
                                               for p in sorted(SAVE_DIR.glob('*.fm'), key=lambda p: p.stat().st_mtime, reverse=True)],
-                                    'groups': GROUPS, 'staff_scoring_attributes': SCORING_SKILLS,
+                                    'groups': GROUPS, 'column_groups': COLUMN_GROUPS, 'staff_scoring_attributes': SCORING_SKILLS,
                                     'traits': [{'id': t.value, 'name': t.name.lower().replace('_', ' ')} for t in Trait if t.value >= 0],
                                     'roles': {k: {'name': v[0], 'position': v[1], 'weights': v[2]} for k, v in ROLES.items()}})
                         return
@@ -219,7 +267,7 @@ def serve(port=0, storage=None):
                             if key not in scout.rows or not isinstance(value, list) or not 1 <= len(value) <= 82 or 'name' not in value or any(c not in layout_columns for c in value):
                                 raise ValueError('Layout inválido. Preserve a coluna Nome e use até 82 colunas.')
                         temporary = layout_path.with_suffix('.tmp')
-                        temporary.write_text(json.dumps({**body, '_version': 1}))
+                        temporary.write_text(json.dumps({**{kind: ordered_columns(columns, kind) for kind, columns in body.items()}, '_version': 2}))
                         temporary.replace(layout_path)
                         self.reply({'ok': True})
                         return

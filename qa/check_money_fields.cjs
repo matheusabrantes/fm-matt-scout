@@ -2,6 +2,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const {execFileSync}=require('node:child_process');
+const columnGroupsFromServer=JSON.parse(execFileSync(path.join(__dirname,'../.venv/bin/python'),['-c','import json; from server import COLUMN_GROUPS; print(json.dumps(COLUMN_GROUPS))'],{cwd:path.join(__dirname,'..'),env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'}}));
 
 const elements = new Map();
 function element(key) {
@@ -21,7 +23,23 @@ vm.runInNewContext(source + `
   assert(baseColumns.players.includes('model_value'));
   assert(baseColumns.players.includes('model_fee'));
   assert(!baseColumns.players.includes('value'));
-  assert(baseColumns.players.indexOf('model_value')===baseColumns.players.indexOf('club_name')+1);
+  columnGroups=columnGroupsFromServer;
+  for(const list of ['players','staff','clubs']) {
+    assert.deepEqual(baseColumns[list],orderedColumns(baseColumns[list],list));
+    kind=list;visibleColumns[list]=[...baseColumns[list]].reverse();renderColumnOptions();
+    const html=$('column-options').innerHTML;
+    const offered=[...html.matchAll(/data-column="([^"]+)"/g)].map(m=>m[1]);
+    assert.deepEqual(offered,Object.values(columnGroups[list]).flat());
+    assert(html.includes('name" type="checkbox" checked disabled'));
+    rows=[];renderTable();
+    const displayed=[...$('table').querySelector('thead').innerHTML.matchAll(/data-sort="([^"]+)"/g)].map(m=>m[1]);
+    assert.deepEqual(displayed,orderedColumns(baseColumns[list],list).filter(key=>key!=='positions'));
+  }
+  kind='players';
+  assert.deepEqual(orderedColumns(['model_fee','attr_passing','age','ca','name','attr_acceleration']),['name','age','ca','model_fee','attr_passing','attr_acceleration']);
+  visibleColumns.players=['name','future_metric'];renderColumnOptions();
+  assert($('column-options').innerHTML.includes('Outras colunas salvas'));
+  assert($('column-options').innerHTML.includes('data-column="future_metric" type="checkbox" checked'));
   salaryPrefs={currency:'EUR',period:'month',rate:1.25,money_rate:2,money_source:'clause'};
   for(const period of ['week','month','year']) {
     salaryPrefs.period=period;
@@ -82,5 +100,5 @@ vm.runInNewContext(source + `
   assert(columnLabel('value').includes('unid. do save'));
   salaryPrefs={currency:'EUR',period:'month',rate:1.2,money_rate:1.2,money_source:'salary'};
   assert(columnLabel('balance').includes('(aprox.)'));
-`, {assert,document,window:{},structuredClone,Intl,console});
+`, {assert,document,window:{},structuredClone,Intl,console,columnGroupsFromServer});
 console.log('PASS: monetary tables/profiles, signed balances, canonical filter units and period independence');
