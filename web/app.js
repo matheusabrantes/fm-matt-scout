@@ -142,7 +142,7 @@ function renderTable() {
   if (kind === 'players' && $('position').value.split(',').includes('GK') && !columns.includes('goalkeeping_sum')) columns.push('goalkeeping_sum');
   columns = orderedColumns(columns);
   const person = kind !== 'clubs';
-  $('table').querySelector('thead').innerHTML = `<tr>${person ? '<th scope="col" class="check">Selecionar</th>' : ''}${columns.map(key => `<th scope="col" class="${key === 'attribute_sum' ? 'sum' : !['name','club_name','positions','stadium_name','league_name','nation_id','eu_national','staff_role','staff_area','team_slot'].includes(key) ? 'numeric' : ''}" ${key === sort ? `aria-sort="${direction === 'desc' ? 'descending' : 'ascending'}"` : ''}>${key === 'positions' ? 'Posição' : `<button data-sort="${key}" title="${key === 'attribute_sum' ? 'Soma dos 36 atributos técnicos, mentais e físicos. Não inclui CA, PA, goleiro ou ocultos.' : key === 'rating' ? 'Estimativa por posição com fórmula própria visível no perfil.' : `Ordenar por ${columnLabel(key)}`}">${columnLabel(key)}${key === sort ? direction === 'desc' ? ' ↓' : ' ↑' : ''}</button>`}</th>`).join('')}</tr>`;
+  $('table').querySelector('thead').innerHTML = `<tr>${person ? `<th scope="col" class="check"><label class="checkbox-label"><input id="select-all" type="checkbox" aria-label="${kind==='staff'?'Selecionar todos os profissionais carregados':'Selecionar todos os jogadores carregados'}">Selecionar</label></th>` : ''}${columns.map(key => `<th scope="col" class="${key === 'attribute_sum' ? 'sum' : !['name','club_name','positions','stadium_name','league_name','nation_id','eu_national','staff_role','staff_area','team_slot'].includes(key) ? 'numeric' : ''}" ${key === sort ? `aria-sort="${direction === 'desc' ? 'descending' : 'ascending'}"` : ''}>${key === 'positions' ? 'Posição' : `<button data-sort="${key}" title="${key === 'attribute_sum' ? 'Soma dos 36 atributos técnicos, mentais e físicos. Não inclui CA, PA, goleiro ou ocultos.' : key === 'rating' ? 'Estimativa por posição com fórmula própria visível no perfil.' : `Ordenar por ${columnLabel(key)}`}">${columnLabel(key)}${key === sort ? direction === 'desc' ? ' ↓' : ' ↑' : ''}</button>`}</th>`).join('')}</tr>`;
   if(kind==='staff')$('table').querySelector('[data-sort="attribute_sum"]')?.setAttribute('title',`Soma dos ${staffScoring.length} atributos profissionais ativos, peso igual, máximo ${staffScoring.length*20}. Campos legados, personalidade e estilo não entram.`);
   $('table').querySelector('tbody').innerHTML = rows.length ? rows.map(row => `<tr data-uid="${row.uid}" class="${currentProfile?.row.uid === row.uid ? 'selected' : ''}">${person ? `<td class="check"><input type="checkbox" data-select="${row.uid}" aria-label="Selecionar ${esc(row.name)}" ${selection.has(row.uid) ? 'checked' : ''}></td>` : ''}${columns.map(key => {
     if (key === 'name') return `<td class="name"><button data-profile="${row.uid}" ${kind==='clubs'?`title="${esc(row.name)}"`:''}>${esc((kind==='clubs'?row.short_name:null) || row.name || `Registro ${row.uid}`)}</button>${person&&row.shortlisted?'<span class="fine"> · Na lista</span>':''}</td>`;
@@ -176,6 +176,14 @@ function updateSelection() {
   $('list-remove').disabled=unavailable||count===0;
   $('list-remove').hidden=view!=='shortlist'&&!$('within_shortlist').checked;
   $('clear-selection').disabled=unavailable||count===0;
+  const all=$('select-all');
+  if(all&&kind!=='clubs') {
+    const marked=rows.filter(row=>selection.has(row.uid)).length;
+    all.checked=rows.length>0&&marked===rows.length;
+    all.indeterminate=marked>0&&marked<rows.length;
+    all.disabled=unavailable||rows.length===0;
+    all.title=`Selecionar ou desmarcar as ${num(rows.length)} linhas já carregadas desta pesquisa.`;
+  }
   document.querySelectorAll('[data-select],#profile-watch,#profile-select').forEach(control=>{
     control.disabled=unavailable;
     if(control.dataset.select)control.checked=selection.has(Number(control.dataset.select));
@@ -282,6 +290,11 @@ function renderProfile() {
 }
 function attributeLabel(key) {
   return Object.values(groups).map(group=>group[key]).find(Boolean) || key;
+}
+function selectLoaded(checked) {
+  if(loading||shortlistBusy||!meta||kind==='clubs')return;
+  rows.forEach(row=>{if(checked)selection.add(row.uid);else selection.delete(row.uid);});
+  updateSelection();
 }
 function toggleSelection(uid) {
   if(loading||shortlistBusy||kind==='clubs')return;
@@ -647,6 +660,7 @@ document.addEventListener('change',action(async event => {
     if(event.target.value)conditions[event.target.dataset.condition]=event.target.value;else delete conditions[event.target.dataset.condition];
     renderConditions();return refreshRows(true);
   }
+  if(event.target.id==='select-all'){selectLoaded(event.target.checked);return;}
   if (event.target.dataset.select) { toggleSelection(Number(event.target.dataset.select)); return; }
   if (event.target.id==='preset') { $('remove-preset').disabled=!event.target.value; return; }
   if (event.target.id==='preset-file') {

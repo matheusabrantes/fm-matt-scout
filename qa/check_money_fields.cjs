@@ -46,11 +46,21 @@ vm.runInNewContext(source + `
   assert.equal([...selectionHTML.matchAll(/data-select=/g)].length,3);
   assert(!selectionHTML.includes('data-watch'));assert(selectionHTML.includes('Na lista'));
   toggleSelection(1);assert.equal($('compare').disabled,true);assert.equal($('list-add').disabled,false);
+  assert.equal($('select-all').checked,false);assert.equal($('select-all').indeterminate,true);
   toggleSelection(2);assert.equal($('compare').disabled,false);
   toggleSelection(3);assert.equal(selection.size,3);assert.equal($('compare').disabled,true);
   assert.equal($('selection-count').textContent,'3 selecionados');
   shortlistBusy=true;updateSelection();assert($('list-add').disabled);assert($('compare').disabled);
   shortlistBusy=false;toggleSelection(3);assert.equal($('compare').disabled,false);
+  assert($('table').querySelector('thead').innerHTML.includes('id="select-all"'));
+  selectLoaded(true);assert.equal(selection.size,3);assert.equal($('select-all').checked,true);assert.equal($('select-all').indeterminate,false);
+  selection.add(99);selectLoaded(false);assert.deepEqual([...selection],[99]);assert.equal($('select-all').checked,false);assert.equal($('select-all').indeterminate,false);
+  selectLoaded(true);assert.equal(selection.size,4);
+  rows.push({uid:4,name:'D'});updateSelection();assert.equal($('select-all').checked,false);assert.equal($('select-all').indeterminate,true);
+  selectLoaded(true);assert.equal(selection.size,5);assert.equal($('select-all').checked,true);
+  shortlistBusy=true;updateSelection();selectLoaded(false);assert.equal(selection.size,5);assert($('select-all').disabled);
+  shortlistBusy=false;rows=[];updateSelection();assert($('select-all').disabled);assert.equal($('select-all').indeterminate,false);
+
   kind='clubs';updateSelection();assert($('selection-actions').hidden);
   kind='players';selection.clear();meta=null;rows=[];
   salaryPrefs={currency:'EUR',period:'month',rate:1.25,money_rate:2,money_source:'clause'};

@@ -346,3 +346,24 @@ time. Memphis e Gabriel Paulista foram marcados; o contador mostrou 2 selecionad
 e os botões Comparar/Adicionar à lista ficaram habilitados usando essa seleção.
 Não foi acionada escrita na lista pessoal durante a conferência nativa; ela foi
 comparada com o snapshot anterior. Recursos do bundle/ZIP e assinatura conferidos.
+
+
+## Selecionar todos no cabeçalho — 30/10/2026
+
+A caixa no cabeçalho marca/desmarca as linhas carregadas da pesquisa atual,
+reutilizando a seleção única e Adicionar à lista. Ela indica seleção parcial,
+fica desabilitada com tabela vazia/carregamento/gravação e não altera seleções
+que estejam fora das linhas carregadas. Carregar mais recalcula o estado;
+novos resultados podem ser incluídos marcando o cabeçalho novamente.
+
+O teste JavaScript real cobre total/parcial/vazio, desmarcar o lote preservando
+uma seleção externa, novas linhas e bloqueio durante gravação. Os 112 testes
+Python passaram. O teste Chromium completo foi atualizado para o cabeçalho,
+mas não foi repetido nesta alteração pequena; a gravação em grupo foi validada
+na execução anterior de 35 fluxos em armazenamento temporário isolado.
+
+Na instalação AppKit/WebKit atualizada, o cabeçalho marcou os 68 jogadores do
+Corinthians e habilitou Adicionar à lista. Desmarcar Memphis reduziu o contador
+para 67; marcar e desmarcar pelo cabeçalho voltou de 68 a zero. Nenhuma adição
+foi executada na lista pessoal; seu conteúdo permaneceu igual ao snapshot.
+Fonte, recurso instalado e ZIP são idênticos; assinatura local conferida.
