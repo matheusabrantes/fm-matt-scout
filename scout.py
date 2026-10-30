@@ -13,6 +13,8 @@ from statistics import fmean
 from pathlib import Path
 
 import fmsave
+from club_debt import read_current_club_debts
+from club_finances import read_current_club_finances
 from contract_reader import RELEASE_KINDS, contract_state, listing_status
 from staff_roles import ROLES as STAFF_ROLES
 from staff_skills import SKILLS as STAFF_SKILLS, enrich_staff_skills
@@ -341,7 +343,8 @@ def filter_rows(rows, query, shortlist=(), game_date=None):
             if expiry is None or expiry < query['contract_after']:
                 continue
         if query.get('no_contract') == '1' and not (row.get('contract_state') == 'free'
-                or kind == 'staff' and row.get('has_contract') is False):
+                or kind == 'staff' and row.get('has_contract') is False
+                and not row.get('has_club_appointment')):
             continue
         if 'squad_status' in numeric_choices and row.get('squad_status_code') not in numeric_choices['squad_status']:
             continue
@@ -462,8 +465,26 @@ class Scout:
                         if record:
                             club.update({field: record[field] for field in ('balance', 'transfer_budget_remaining', 'wage_budget_weekly')})
                             club['finance_date'] = record['month']
+                            club['finance_source'] = 'monthly'
+                    with save._context.section('game_db') as game_db:
+                        current_finances = read_current_club_finances(
+                            game_db, save._context.own_club_record_spans(), save.info.build,
+                            save.info.game_date, save.info.section_schemas.get('game_db'))
+                    for club in clubs:
+                        if club['uid'] in current_finances:
+                            club.update(current_finances[club['uid']])
                 except (fmsave.FmsaveError, ValueError) as exc:
                     notes.append(f'Finanças dos clubes indisponíveis: {exc}')
+                progress('Lendo empréstimos financeiros…')
+                try:
+                    with save._context.section('game_db') as game_db:
+                        debts = read_current_club_debts(
+                            game_db, save._context.own_club_record_spans(), save.info.build)
+                    for club in clubs:
+                        if club['uid'] in debts:
+                            club.update(debts[club['uid']])
+                except (fmsave.FmsaveError, ValueError) as exc:
+                    notes.append(f'Empréstimos financeiros indisponíveis: {exc}')
                 try:
                     club_stadium_fields(clubs, records(save.stadiums()))
                 except (fmsave.FmsaveError, ValueError) as exc:

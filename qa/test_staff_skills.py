@@ -43,5 +43,22 @@ class StaffSkillsTests(unittest.TestCase):
     def test_duplicate_matching_blocks_are_not_assigned_arbitrarily(self):
         self.assertEqual(read_staff_skills(bytes(self.block)*2, [self.member], self.layout), ({}, {}))
 
+    def test_allocated_unequal_uid_headers_use_the_same_full_block_checks(self):
+        uid = self.layout.allocated_uid_minimum + 123
+        member = {**self.member, 'uid': uid}
+        block = self.block.copy()
+        struct.pack_into('<II', block, 4, uid, 917111893)
+        skills, selectors = read_staff_skills(bytes(block), [member], self.layout)
+        self.assertEqual(sum(skills[uid].values()), 380)
+        self.assertEqual(selectors, {uid: 457})
+        for offset, value in [(12, 9), (21, 101), (35, 9), (61, 0)]:
+            damaged = block.copy(); damaged[offset] = value
+            self.assertEqual(read_staff_skills(bytes(damaged), [member], self.layout), ({}, {}))
+        for other in (0, 0xffffffff):
+            damaged = block.copy(); struct.pack_into('<I', damaged, 8, other)
+            self.assertEqual(read_staff_skills(bytes(damaged), [member], self.layout), ({}, {}))
+        ordinary = block.copy(); struct.pack_into('<I', ordinary, 8, uid)
+        self.assertEqual(read_staff_skills(bytes(ordinary + block), [member], self.layout), ({}, {}))
+
 
 if __name__ == '__main__':unittest.main()

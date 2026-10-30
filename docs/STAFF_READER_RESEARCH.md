@@ -94,3 +94,83 @@ Desempenho abaixo do clube. Ele integra o grupo sem header associado; a categori
 profissional abaixo do nome diz Analista de Recrutamento, reforçando que a
 categoria não substitui o cargo do contrato. Nenhum nome foi usado como exceção
 fixa no mapa de cargos. A lista completa ficou em CSV local, fora do Git.
+
+## Vínculos restantes: correção em 30/10/2026
+
+A nova leitura do COR usa o arquivo salvo em 30/12/2025, SHA-256
+`3795481a7bebcdd4512f3c1419b3c0890adda042dc1f5fa74cb73b92874cde8d`.
+A cópia e os dados descomprimidos foram compartilhados com a investigação de
+finanças; não foi criada outra cópia nem alterado o save.
+
+O primeiro bloqueio era o pré-filtro deste aplicativo: ele exigia duas cópias
+iguais do UID, embora `_header_values(..., layout)` do `fmsave==0.5.10` já aceite
+headers alocados com palavras diferentes, quando tipo e bloco completo são
+válidos. O candidato agora também alcança esse caminho. A atribuição continua
+exigindo UID, tipo, CA/PA, preferências nomeadas e bloco profissional íntegro;
+mais de um bloco correspondente continua ambíguo. Adryan Almeida tem selector
+75679 nesse save e passa por esse caminho, com cargo contratual Analista de
+Desempenho. Não foi usado o nome como chave de correção.
+
+O segundo bloqueio era uma forma distinta de registro médico que o decoder de
+contratos completos não publica como contrato. Os 629 registros sem contrato
+lido possuem uma atribuição médica desse tipo. O adaptador aceita somente a
+forma demonstrada do build 26.3.2, com os seguintes offsets relativos:
+
+| Offset | Dado usado |
+| --- | --- |
+| +8 | Marcador de forma `06 00` ou `0a 00` |
+| +10 | Referência de quatro bytes, opaca (pode ser ausente) |
+| +14 | Marcador `05 05` |
+| +16 | Selector da própria pessoa |
+| +20 | Equipe que resolve no índice do save para o clube que a lista |
+| +28 | Campo monetário opaco; não publicado como salário por este adaptador |
+| +32 | Cargo: 38 ou 46 |
+| +34, +35..38 | Zero e sentinela `FF FF FF FF` |
+
+O registro precisa estar na janela do header da própria pessoa. Sua distância
+ao fim do bloco de habilidades validado é uma das três formas observadas:
+77, 80 ou 88 bytes. Exige listagem médica atual no clube e ausência de contrato
+completo já lido. Mais de um registro aceito, equipe sem clube correspondente,
+identidade diferente, prefixo incompleto ou cargo fora dos dois códigos deixa
+esse adaptador sem resultado. Os campos de data dessa forma ainda não foram
+identificados; não foram chamados de início/fim nem usados para criar termos.
+A equipe usa o clube armazenador, preservando médicos de equipes B que não têm
+um contrato completo que os transfira para o controlador da afiliada.
+
+O byte de cargo dessa forma é independente de `unknown.r4`: Fernando Modesto de
+Sousa (Esporte Clube Flamengo) tem `r4=6` e atribuição médica 46; Reinaldo Couri
+Nogueira (Volta Redonda) tem `r4=46` e atribuição 38; Leandro Correia dos Santos
+(Corinthians) tem `r4=0` e atribuição 38. Essa diferença impede preencher os cargos
+pelo byte de preferência ou pelo departamento sozinho.
+
+A conferência no FM da página pública de todos os funcionários do Real Madrid
+mostrou Felipe Segura, 51 anos, e Manuel Arroyo, 50, como **Médico**, com nomes
+sem link para perfil, salário N/D e expiração N/A. Niko Mihić, 69, aparece como
+**Director Clínico**. Isso confirma 46 como Médico e 38 como Diretor clínico.
+O identificador interno `club_doctor` foi preservado para 38 para não invalidar
+filtros existentes; seu rótulo visível foi corrigido.
+
+Na cópia examinada, a nova forma cobre 629 atribuições: 315 diretores clínicos
+e 314 médicos, sem inferir por nome. Os seis pendentes do Corinthians passam a
+ter cargo: Leandro é Diretor clínico; Giulio Cesare Lopes Ferriello, Eures Soncini
+Facci, Ricardo Galotti, Michel Youssef Muniz Domingos e João Marcelo são Médicos.
+O app registra `has_club_appointment` e a origem `club_appointment` para distinguir
+a confirmação de emprego da leitura de termos contratuais. Não inventa salário,
+vencimento ou período; o campo original `has_contract` do leitor é preservado.
+O estado normalizado de vínculo passa a contratado, de acordo com o contrato
+Profissional exibido pelo FM, sem marcar como lidos os termos ausentes.
+
+A prova combinada no arquivo novo resultou em **10.537 cargos identificados de
+10.541 registros brutos**, antes da exclusão de clubes femininos. Restam quatro
+vínculos com início posterior à data da carreira: Michael Wiesinger (Bayern,
+01/05/2026), Tobias Weis (Sportfreunde Schwäbisch Hall, 01/07/2026), Benjamin
+Le Reste (AS Miquelonnaise, 01/05/2026) e Marc Heidenmann (RB Leipzig,
+01/07/2026). Não foram apresentados como cargos atuais antes do início.
+
+Os headers alocados acrescentaram 53 pessoas distintas, distribuídas em 57
+registros de clube. **10.540 registros brutos** receberam as 19 habilidades,
+ficando ausente somente o treinador humano. Treze testes específicos de staff
+passaram, incluindo o percurso completo de atribuição médica sem inventar termos,
+UIDs alocados, ambiguidade, dono/clube/equipe, limites e sentinelas. A prova local
+foi guardada com o hash da fonte em `staff-reader-verification.json`, no diretório
+temporário compartilhado, sem publicar o save nem recortes binários no Git.

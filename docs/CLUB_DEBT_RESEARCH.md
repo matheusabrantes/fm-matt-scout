@@ -88,3 +88,88 @@ A região descomprimida não listada `unlisted_after_non_pl_hist_ls`, de 51.877.
 5. Usar a moeda/escala da carreira. A calibração salarial abreviada anterior não certifica totais em euros unitários.
 
 Nenhum parser, coluna com valores inferidos ou constante extraída da tela foi adicionado por esta análise.
+
+## 30/10/2026: proprietário estrutural e leitura dos termos atuais
+
+Nova cópia COR, já salva em 30/12/2025 às 15h, SHA-256
+`3795481a7bebcdd4512f3c1419b3c0890adda042dc1f5fa74cb73b92874cde8d`.
+Seu `game_db` descomprimido tem **170.268.292 bytes**. Os offsets abaixo pertencem
+a essa cópia, não são constantes do leitor.
+
+Foi localizada uma tabela paralela de objetos de clube em **55.573.460**:
+contagem u32 **37.346**, seguida do primeiro cabeçalho em **55.573.464**.
+Os cabeçalhos armazenam ordinais u32 consecutivos de zero a 37.345; o último
+começa em **73.556.136**. A posição inicial é encontrada no arquivo por assinatura
+e validação de todos os cabeçalhos, sem offset, nome ou valor monetário fixo.
+
+O ordinal corresponde a **índice bruto do clube + 1**, obtido do registro básico
+cujo UID duplicado coincide com `ClubRecordSpan.club_uid`. Isso equivale às chaves
+de `ClubIndex.uid_by_club_index` do fmsave. Controles independentes:
+
+| Clube | Índice bruto | Ordinal da tabela atual | Início do objeto atual | Início da primeira linha de empréstimo |
+| --- | ---: | ---: | ---: | ---: |
+| Boca Juniors, UID 82 | 15 | 16 | 55.587.329 | 55.587.918 |
+| Corinthians, UID 318 | 163 | 164 | 55.713.224 | 55.713.867 |
+| Burnley, UID 622 | 347 | 348 | 55.906.619 | 55.907.622 |
+| Real Madrid, UID 1734 | 1137 | 1138 | 56.711.993 | 56.712.792 |
+
+**Todas as 74 listas anteriormente reconhecidas apenas pelos termos ficaram
+dentro do objeto do proprietário esperado.** A associação do novo leitor usa
+o ordinal e o UID do registro básico, e não esses fingerprints. A ordem de clubes
+aceitos em uma lista Python não pode substituir o índice bruto: há slots ausentes.
+
+O cabeçalho possui uma lista variável de referências: sua contagem está em +7,
+as entradas ocupam quatro bytes e o primeiro conjunto de seis datas começa em
+`19 + 4 * contagem`. Há um byte igual a um, seguido de outro conjunto de seis
+datas. Os dois primeiros bytes depois do ordinal têm intervalo observado 0–20;
+não se atribuiu significado a eles neste leitor. Essa estrutura resolveu vinte
+falsos candidatos inicialmente encontrados em atributos/uniformes do objeto
+anterior. A busca final encontrou **um único candidato por ordinal**, com tamanho
+máximo observado de objeto de 6.164 bytes. O leitor limita a distância de busca
+a 12.000 bytes e rejeita toda a tabela se faltar um ordinal ou houver ambiguidade.
+
+Dentro do objeto delimitado pelo próximo cabeçalho, a lista atual tem contagem
+u32, linhas de 28 bytes e um bloco posterior com contagem u16 de itens de 11 bytes.
+No formato verificado, cada item posterior começa com o código dois. Em seguida
+há um campo de quatro bytes compatível com data de fundação, uma referência
+`FFFFFFFF`, um u16, texto UTF-8 com comprimento u32, contagem byte e objetos de
+uniforme de 27 bytes. Esses elementos e seus limites validam o envelope; o leitor
+não publica significado dos campos ainda não confirmados. Datas de fundação
+desconhecidas com ano zero e textos com acentos também existem.
+
+Os bytes +22 e +23 da linha são dois campos, com +23 podendo ser um. Não se deve
+exigir o u16 inteiro igual a um. Um empréstimo do Espanyol, UID 1708, armazena
+`-1` no campo de juros mensais: o leitor conserva os outros termos e retorna
+juros indisponíveis (`None`), sem convertê-los em zero.
+
+Foi acrescentado **`club_debt.py`**, função
+`read_current_club_debts(game_db, spans, build)`, restrita ao build verificado
+`26.3.2+2329565`. Os valores permanecem na moeda interna e são identificados
+como **valor original**, pagamento mensal e juros mensais, acompanhados de datas,
+tipo e flags brutos. O resultado distingue uma lista vazia validada de um clube
+sem leitura. O último objeto da tabela não é lido porque seu limite final não
+foi verificado.
+
+Verificação na cópia acima: **33.765 de 33.884 proprietários aceitos** tiveram
+lista única validada: **139 listas não vazias** e **33.626 vazias**. Outros 119
+objetos tinham envelopes vazios ambíguos e foram omitidos. Não representam uma
+afirmação de dívida zero. As 74 listas dos controles anteriores passaram com
+quantidades e proprietários exatos. A leitura por mmap levou 13,07 segundos;
+a otimização de busca foi comparada com os 33.765 resultados anteriores completos,
+sem diferença. Sete testes sintéticos cobrem propriedade, termos iguais em clubes
+vizinhos, listas variáveis, limites, duplicidade, build, juros ausentes e ambiguidade.
+
+Na conferência independente do Real Madrid no editor aberto do FM, o primeiro
+empréstimo mostra original **€995.000.022**, mensalidade **€3.829.258**, juros
+mensais **€1.460.211**, início 01/03/2020 e fim 30/03/2055. A linha atual lida
+contém `859885760`, `3309271`, `1261924` e as mesmas datas. O segundo original
+mostrado é **€340.000.001**, correspondente ao valor interno `293830304`.
+Isso confirma o significado de +9 como juros mensais, anteriormente só inferido.
+
+**O contador restante e a dívida líquida atual continuam em aberto.** Os inteiros
+426 e 432 no fim do objeto próprio do Corinthians pertencem a sequências repetidas
+de outras estruturas, não validam um contador de parcelas. O novo leitor não
+produz total de dívida corrente, não usa a data final para estimar saldo e não
+converte principal original em dívida atual. As seções anteriores descrevem a
+evolução da investigação; esta seção substitui a pendência de proprietário e a
+hipótese sobre +9, mas conserva a pendência de saldo atual.

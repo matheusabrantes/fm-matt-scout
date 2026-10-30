@@ -67,7 +67,7 @@ def validate_filter(preset):
             floor = -ceiling if range_field in ('balance', 'ability_difference') else 0
             if not floor <= number <= ceiling or (attribute and not 1 <= number <= 20):
                 raise ValueError(f'{key} fora da faixa permitida.')
-            if not number.is_integer() and key != 'rating_min' and range_field not in ('wage','wage_budget_weekly','release_fee'):
+            if not number.is_integer() and key != 'rating_min' and range_field not in ('wage','wage_budget_weekly','release_fee','value','balance','transfer_budget_remaining'):
                 raise ValueError(f'{key} exige número inteiro.')
         if key == 'position' and not set(value.split(',')).issubset(POSITIONS):
             raise ValueError('Posição inválida.')

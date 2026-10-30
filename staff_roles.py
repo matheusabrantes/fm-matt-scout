@@ -18,7 +18,7 @@ CONTRACT_ROLES = {
     22: ('set_piece_coach', 'Preparador de bolas paradas'),
     26: ('fitness_coach', 'Preparador físico'),
     34: ('goalkeeping_coach', 'Preparador de goleiros'),
-    38: ('club_doctor', 'Médico do clube'),
+    38: ('club_doctor', 'Diretor clínico'),
     40: ('head_sports_science', 'Chefe de ciência esportiva'),
     44: ('chief_scout', 'Chefe de olheiros'),
     46: ('doctor', 'Médico'),
@@ -68,6 +68,43 @@ def read_staff_contract_roles(game_db, member_by_selector, decoder, layouts):
             candidates.setdefault((uid, record[0]), []).append(game_db[offset + 21])
     return {key: CONTRACT_ROLES[codes[0]][0] for key, codes in candidates.items()
             if len(codes) == 1 and codes[0] in CONTRACT_ROLES}
+
+
+def read_staff_appointment_roles(game_db, member_by_selector, team_to_club, layout):
+    """Medical appointments omitted by the reader's full contract decoder."""
+    candidates = {}
+    reader = _header_reader(layout)
+    for hit in re.finditer(rb'[\x06\x0a]\x00.{4}\x05\x05', game_db, re.DOTALL):
+        offset = hit.start() - 8
+        if offset < 0 or offset + 40 > len(game_db):
+            continue
+        if game_db[offset + 34] != 0 or game_db[offset + 35:offset + 39] != b'\xff' * 4:
+            continue
+        selector, team = struct.unpack_from('<II', game_db, offset + 16)
+        members = member_by_selector.get(selector, ())
+        code = game_db[offset + 32]
+        if not members or code not in (38, 46):
+            continue
+        header = locate_contracted_header(game_db, selector - 1, offset, layout)
+        if header is None or header + layout.entry_count_offset >= offset:
+            continue
+        uid, kind = _header_values(game_db, header, reader, layout)
+        block_end = (header + layout.ability_base_offset
+                     + layout.entry_bytes * game_db[header + layout.entry_count_offset]
+                     + layout.block_40_offset + layout.block_40_count)
+        # shortcut: three 26.3.2 medical prefixes are demonstrated; reject other record shapes.
+        if kind != layout.staff_kind or offset - block_end not in (77, 80, 88):
+            continue
+        # A listed appointment stays at its storing club, including affiliated B teams.
+        club_uid = team_to_club.get(team, (None, None))[0]
+        if club_uid is None:
+            continue
+        matches = [m for m in members if m['uid'] == uid and m.get('club_uid') == club_uid
+                   and m.get('in_club_lists') and 0 in m.get('list_indexes', ())
+                   and m.get('has_contract') is False]
+        if len(matches) == 1:
+            candidates.setdefault((uid, club_uid), []).append(code)
+    return {key: CONTRACT_ROLES[codes[0]][0] for key, codes in candidates.items() if len(codes) == 1}
 
 
 def read_staff_roles(game_db, clubs, spans, member_by_selector, long_name_offset):

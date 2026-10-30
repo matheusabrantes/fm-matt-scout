@@ -19,6 +19,13 @@ def player(uid=1, level=10, **changes):
 
 
 class ScoutTests(unittest.TestCase):
+    def test_staff_medical_appointments_are_not_free_agents_without_decoded_terms(self):
+        rows = [{'uid': 1, 'has_contract': False, 'has_club_appointment': True,
+                 'contract_state': 'contracted'},
+                {'uid': 2, 'has_contract': False}, {'uid': 3, 'has_contract': True}]
+        self.assertEqual([r['uid'] for r in filter_rows(rows, {
+            'kind': 'staff', 'no_contract': '1', 'sort': 'name'})], [2])
+
     def test_league_names_use_only_named_national_competitions_and_primary_team(self):
         clubs=[{'uid':1},{'uid':2},{'uid':3},{'uid':4}]
         competitions=[{'id':7,'database_id':11},{'id':8,'database_id':200},{'id':9,'database_id':22}]
