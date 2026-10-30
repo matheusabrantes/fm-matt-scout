@@ -293,3 +293,23 @@ liga antes de reputação, médias, finanças e estádio. O seletor do staff foi
 inspecionado visualmente com categorias e seleções preservadas. A migração
 manteve exatamente o conjunto de colunas de cada lista deste Mac; cópia anterior
 em `/tmp/fm-scout-layout-before-logical-order-20261030.json`.
+
+
+## Nomes curtos dos clubes — 30/10/2026
+
+O staff agora recebe `club_short_name` pelo vínculo com o clube, como os jogadores.
+A API da lista de clubes inclui `short_name`, usado no nome da tabela e no título
+do perfil. Seletores e vínculo contratual preferem o nome curto. Nome completo
+permanece nos detalhes/tooltips e é aceito na busca; ordenação por nome/clube segue
+o texto exibido. Se faltar nome curto, mantém a alternativa de nome completo.
+
+108 testes Python passaram. Novos controles cobrem busca pelos dois nomes e
+ordenação pelo nome curto em clubes/staff sem alterar o nome original. O teste
+JavaScript real verifica tabelas de jogadores/staff/clubes, cabeçalhos de perfil,
+tooltips e ausência de nome curto. Não foi repetida a suíte Chromium completa.
+
+A instalação atualizada carregou o COR. Busca por Corinthians no staff exibiu
+Corinthians na célula Clube, com Sport Club Corinthians Paulista no tooltip;
+a mesma busca na aba Clubes mostrou Corinthians na coluna Nome. As referências
+continuam vinculadas ao UID do clube. Fontes/bundle/ZIP e assinatura local
+conferidos após a atualização.

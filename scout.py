@@ -303,7 +303,7 @@ def filter_rows(rows, query, shortlist=(), game_date=None):
                     or not contract.get('start') or contract['start'] > today.isoformat()
                     or not today.isoformat() <= expiry <= deadline):
                 continue
-        if search and search not in normalized(f"{row.get('name', '')} {row.get('club_name', '')} {row.get('club_short_name', '')}"):
+        if search and search not in normalized(f"{row.get('name', '')} {row.get('short_name', '')} {row.get('club_name', '')} {row.get('club_short_name', '')}"):
             continue
         if 'club' in numeric_choices and row.get('club_uid') not in numeric_choices['club']:
             continue
@@ -389,13 +389,19 @@ def filter_rows(rows, query, shortlist=(), game_date=None):
                   'release_fee_domestic','release_fee_foreign','model_value','model_fee'))
     if sort not in valid | attribute_columns:
         raise ValueError('Coluna de ordenação inválida.')
+    def sort_value(row):
+        if sort == 'name' and kind == 'clubs':
+            return row.get('short_name') or row.get('name')
+        if sort == 'club_name':
+            return row.get('club_short_name') or row.get('club_name')
+        return row.get('nation_name') if sort == 'nation_id' else column_value(row, sort)
     def key(row):
-        value = row.get('nation_name') if sort == 'nation_id' else column_value(row, sort)
+        value = sort_value(row)
         if isinstance(value, str):
             value = normalized(value)
         return value, row.get('attribute_sum') or -1, normalized(row.get('name'))
-    present = [r for r in results if (r.get('nation_name') if sort == 'nation_id' else column_value(r, sort)) is not None]
-    absent = [r for r in results if (r.get('nation_name') if sort == 'nation_id' else column_value(r, sort)) is None]
+    present = [r for r in results if sort_value(r) is not None]
+    absent = [r for r in results if sort_value(r) is None]
     return sorted(present, key=key, reverse=query.get('direction', 'desc') == 'desc') + absent
 
 
@@ -465,6 +471,7 @@ class Scout:
                 club_index = {c['uid']: c for c in clubs}
                 for member in staff:
                     club = club_index.get(member['club_uid'])
+                    member['club_short_name'] = club.get('short_name') if club else None
                     member['club_reputation'] = club['reputation'] if club else None
                     member['club_nation_id'] = club['nation_id'] if club else None
                 try:

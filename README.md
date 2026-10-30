@@ -44,6 +44,8 @@ Carregar mais acrescenta linhas abaixo das já carregadas, mantendo os registros
 
 A comparação mostra no topo quantos atributos cada jogador venceu, além de empates e valores ausentes. Jogadores de linha e comparações mistas usam 36 atributos técnicos, mentais e físicos. A seção de goleiro e seus 11 atributos só aparecem e contam se ambos têm familiaridade GK ≥15, totalizando 47. O vencedor aparece em verde e texto; idade, CA/PA e soma não contam como atributos vencidos. Pesos iguais, sem ajuste por tática.
 
+Jogadores, staff e clubes usam o nome curto do clube nas listas, nos seletores e nos cabeçalhos dos perfis, por exemplo Corinthians. A busca aceita também o nome completo, que fica disponível nos detalhes e tooltips. Sem nome curto lido, usa o nome completo como alternativa.
+
 Todas as listas têm uma coluna Nº à esquerda, de acordo com os filtros e a ordenação atuais. Carregar mais continua a sequência; uma nova pesquisa reinicia em 1.
 
 Clubes femininos identificados por IDs de uma referência local são ocultados, incluindo seus jogadores e staff vinculados. Categoria desconhecida permanece visível. No COR foram identificados 1.017, preservando os masculinos homônimos. Sem elenco lido, a contagem mostra Nenhum jogador lido. A referência e sua cobertura parcial estão em `docs/CLUB_GENDERS.md`.

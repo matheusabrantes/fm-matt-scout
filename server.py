@@ -182,7 +182,7 @@ def serve(port=0, storage=None):
                         raise ValueError('Tipo de registro inválido.')
                     if path == 'api/options':
                         rows = scout.rows[kind]
-                        clubs = {r['club_uid']: r.get('club_short_name') or r.get('club_name') or r.get('name')
+                        clubs = {r['club_uid']: r.get('club_short_name') or r.get('short_name') or r.get('club_name') or r.get('name')
                                  for r in rows if r.get('club_uid') is not None}
                         self.reply({'clubs': sorted([{'uid': k, 'name': v} for k, v in clubs.items()], key=lambda c: c['name'] or ''),
                                     'nations': [{'id': n, 'name': NATION_NAMES[n]} for n in sorted({n for r in rows for n in r.get('nation_ids', []) if n in NATION_NAMES})],
@@ -209,7 +209,7 @@ def serve(port=0, storage=None):
                                    'natural_positions', 'team_slot', 'ca', 'pa', 'attribute_sum', 'goalkeeping_sum', 'rating', 'best_role', 'contract_end',
                                    'ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','model_value_basis','model_fee_basis')
                         if kind == 'clubs':
-                            columns += ('reputation','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count')
+                            columns += ('short_name','reputation','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count')
                         requested = query.get('columns', '').split(',')
                         if any(c and c not in layout_columns for c in requested):
                             raise ValueError('Coluna desconhecida.')

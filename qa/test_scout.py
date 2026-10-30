@@ -19,6 +19,24 @@ def player(uid=1, level=10, **changes):
 
 
 class ScoutTests(unittest.TestCase):
+    def test_clubs_search_and_sort_use_short_names_without_overwriting_full_names(self):
+        clubs=[{'uid':1,'name':'Z clube completo','short_name':'Alpha'},
+               {'uid':2,'name':'A clube completo','short_name':'Zulu'},
+               {'uid':3,'name':'Beta sem nome curto'}]
+        query={'kind':'clubs','sort':'name','direction':'asc'}
+        self.assertEqual([r['uid'] for r in filter_rows(clubs,query)],[1,3,2])
+        self.assertEqual(filter_rows(clubs,{**query,'search':'alpha'}),[clubs[0]])
+        self.assertEqual(filter_rows(clubs,{**query,'search':'Z clube completo'}),[clubs[0]])
+        self.assertEqual(clubs[0]['name'],'Z clube completo')
+
+    def test_staff_club_search_and_sort_follow_the_displayed_short_name(self):
+        staff=[{'uid':1,'name':'Pessoa A','club_name':'Z clube completo','club_short_name':'Alpha'},
+               {'uid':2,'name':'Pessoa B','club_name':'A clube completo','club_short_name':'Zulu'}]
+        query={'kind':'staff','sort':'club_name','direction':'asc'}
+        self.assertEqual([r['uid'] for r in filter_rows(staff,query)],[1,2])
+        self.assertEqual(filter_rows(staff,{**query,'search':'alpha'}),[staff[0]])
+        self.assertEqual(filter_rows(staff,{**query,'search':'Z clube completo'}),[staff[0]])
+
     def test_staff_medical_appointments_are_not_free_agents_without_decoded_terms(self):
         rows = [{'uid': 1, 'has_contract': False, 'has_club_appointment': True,
                  'contract_state': 'contracted'},

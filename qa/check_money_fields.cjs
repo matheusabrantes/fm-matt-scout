@@ -93,6 +93,22 @@ vm.runInNewContext(source + `
   currentProfile.row.model_value_basis='model';renderTable();assert($('table').querySelector('tbody').innerHTML.includes('≈ '+moneyFormat(500)));
   currentProfile.row.value=0;currentProfile.row.transfer_value=null;currentProfile.row.value_note='Valor zero gravado no save; não significa jogador sem contrato.';renderProfile();
   assert($('profile').innerHTML.includes(moneyFormat(0)));assert($('profile').innerHTML.includes('não significa jogador sem contrato'));
+  for(const list of ['players','staff']) {
+    kind=list;visibleColumns[list]=['name','club_name'];
+    rows=[{uid:1,name:'Pessoa',club_name:'Sport Club Corinthians Paulista',club_short_name:'Corinthians'}];renderTable();
+    assert($('table').querySelector('tbody').innerHTML.includes('title="Sport Club Corinthians Paulista">Corinthians</td>'));
+    currentProfile={row:rows[0],history:[],shortlisted:false};profileTab='transfer';renderProfile();
+    assert($('profile').innerHTML.includes('<p>Corinthians'));
+    delete rows[0].club_short_name;renderTable();
+    assert($('table').querySelector('tbody').innerHTML.includes('>Sport Club Corinthians Paulista</td>'));
+  }
+  kind='clubs';visibleColumns.clubs=['name'];rows=[{uid:1,name:'Sport Club Corinthians Paulista',short_name:'Corinthians',nation_name:'Brasil'}];renderTable();
+  assert($('table').querySelector('tbody').innerHTML.includes('title="Sport Club Corinthians Paulista">Corinthians</button>'));
+  currentProfile={row:rows[0],history:[],shortlisted:false};profileTab='attributes';renderProfile();
+  assert($('profile').innerHTML.includes('<h2>Corinthians</h2>'));
+  assert($('profile').innerHTML.includes('Nome completo'));
+  delete rows[0].short_name;renderTable();
+  assert($('table').querySelector('tbody').innerHTML.includes('>Sport Club Corinthians Paulista</button>'));
   salaryPrefs={currency:'USD',period:'month',rate:null,money_rate:null,money_source:null};
   assert(moneyFormat(500).includes('unid. do save'));
   assert(!moneyFormat(500).includes('$'));
