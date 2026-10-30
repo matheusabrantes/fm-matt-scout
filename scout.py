@@ -15,9 +15,12 @@ from pathlib import Path
 import fmsave
 from club_debt import read_current_club_debts
 from club_finances import read_current_club_finances
+from club_locations import read_current_club_links, read_installed_names, stadium_reference_fields
+from fmsave.readers.competitions import find_competition_id_pair_layout, locate_competition_database_ids
 from contract_reader import RELEASE_KINDS, contract_state, listing_status
+from player_values import market_value_fields
 from staff_roles import ROLES as STAFF_ROLES
-from staff_skills import SKILLS as STAFF_SKILLS, enrich_staff_skills
+from staff_skills import SKILLS as STAFF_SKILLS, SCORING_SKILLS as STAFF_SCORING_SKILLS, enrich_staff_skills
 
 NATION_NAMES = {int(key): value for key, value in json.loads((Path(__file__).parent / 'nation-names.json').read_text()).items()}
 _CLUB_GENDERS = json.loads((Path(__file__).parent / 'club-genders.json').read_text())
@@ -158,7 +161,7 @@ def normalized(text):
 def column_value(row, column):
     if column.startswith('attr_'):
         key = column[5:]
-        if key in STAFF_SKILLS:
+        if 'professional_attributes' in row and key in STAFF_SKILLS:
             return row.get('professional_attributes', {}).get(key)
         return (row.get('personality' if key in PERSONALITY else 'attributes') or {}).get(key)
     return row.get(column)
@@ -197,12 +200,16 @@ def exclude_female_clubs(clubs, players, staff):
             [s for s in staff if s.get('club_uid') not in hidden], len(hidden))
 
 
-def club_stadium_fields(clubs, stadiums):
+def club_stadium_fields(clubs, stadiums, links=None, grounds=None):
     homes = {}
     for stadium in stadiums:
         for uid in stadium.get('home_club_uids', ()):
             homes.setdefault(uid, []).append(stadium)
     for club in clubs:
+        ground = (grounds or {}).get((links or {}).get(club['uid'], {}).get('stadium_ordinal'))
+        if ground is not None:
+            club.update(ground, stadium_source='club_status')
+            continue
         matches = homes.get(club['uid'], [])
         # Ownership is not the stadium used for home matches; multiple grounds remain ambiguous.
         if len(matches) == 1:
@@ -212,19 +219,23 @@ def club_stadium_fields(clubs, stadiums):
                         stadium_expansion_capacity=ground.get('expansion_capacity'))
 
 
-def club_league_fields(clubs, competitions, tables, names):
+def club_league_fields(clubs, competitions, tables, names, links=None, database_ids=None, table_names=None):
     by_id = {c['id']: c for c in competitions}
     choices = {}
     for table in tables:
         competition = by_id.get(table.get('competition_id'), {})
         database_id = competition.get('database_id')
-        if database_id not in names:
+        if database_id not in (names if table_names is None else table_names):
             continue
         for row in table['rows']:
             if row.get('team_slot') == 0 and row.get('club_uid') is not None:
                 choices.setdefault(row['club_uid'], set()).add(database_id)
     for club in clubs:
         ids = choices.get(club['uid'], set())
+        current = (database_ids or {}).get((links or {}).get(club['uid'], {}).get('current_competition_id'))
+        if current in names:
+            ids = {current}
+            club['league_source'] = 'club_status'
         club['league_key'] = f'db:{next(iter(ids))}' if len(ids) == 1 else None
         club['league_name'] = names[next(iter(ids))] if len(ids) == 1 else None
     present = {c['league_key']: c['league_name'] for c in clubs if c['league_key']}
@@ -253,7 +264,7 @@ def enrich(player):
     player['ability_difference'] = player['pa'] - player['ca'] if player['pa'] is not None and player['ca'] is not None else None
     for field in ('home', 'current', 'world'):
         player[f'rep_{field}'] = (player.get('reputation') or {}).get(field)
-    player['value'] = player.get('transfer_value')
+    market_value_fields(player)
     contract_fields(player)
     player['roles'] = {key: role_score(player, key) for key in ROLES}
     familiar = [(key, value) for key, value in player['roles'].items()
@@ -372,7 +383,7 @@ def filter_rows(rows, query, shortlist=(), game_date=None):
     valid = {'name', 'age', 'club_name', 'ca', 'pa', 'attribute_sum', 'rating', 'reputation', 'nation_id', 'eu_national', 'goalkeeping_sum', 'ability_difference', 'rep_home', 'rep_current', 'rep_world', 'wage', 'value', 'release_fee', 'ca_mean', 'pa_mean', 'age_mean', 'player_count', 'ca_count', 'pa_count', 'age_count', 'team_slot'}
     attribute_columns = {f'attr_{key}' for group in GROUPS.values() for key in group}
     valid.update(('staff_area','staff_role','height_cm','balance','transfer_budget_remaining',
-                  'wage_budget_weekly','league_name','stadium_seated_capacity','stadium_expansion_capacity',
+                  'wage_budget_weekly','league_name','stadium_name','stadium_seated_capacity','stadium_expansion_capacity',
                   'release_fee_domestic','release_fee_foreign'))
     if sort not in valid | attribute_columns:
         raise ValueError('Coluna de ordenação inválida.')
@@ -485,16 +496,28 @@ class Scout:
                             club.update(debts[club['uid']])
                 except (fmsave.FmsaveError, ValueError) as exc:
                     notes.append(f'Empréstimos financeiros indisponíveis: {exc}')
+                installed_names = read_installed_names()
+                links, database_ids = {}, {}
                 try:
-                    club_stadium_fields(clubs, records(save.stadiums()))
+                    with save._context.section('game_db') as game_db:
+                        links = read_current_club_links(game_db, save._context.own_club_record_spans(), save.info.build)
+                        layout = find_competition_id_pair_layout(save.info.section_schemas.get('game_db'), save.info.build)
+                        database_ids = locate_competition_database_ids(game_db, layout)
+                except (fmsave.FmsaveError, ValueError) as exc:
+                    notes.append(f'Vínculos atuais dos clubes indisponíveis: {exc}')
+                try:
+                    grounds = stadium_reference_fields(save._context.stadium_index(), installed_names.get('stadiums', {}))
+                    club_stadium_fields(clubs, records(save.stadiums()), links, grounds)
                 except (fmsave.FmsaveError, ValueError) as exc:
                     notes.append(f'Estádios indisponíveis: {exc}')
                 progress('Lendo ligas e competições…')
                 competitions = []
                 try:
                     names = fmsave.read_competition_names(Path(__file__).parent / 'league-names.csv')
+                    table_names = names
+                    names = {**installed_names.get('competitions', {}), **names}
                     competitions = club_league_fields(clubs, records(save.competitions()),
-                                                     records(save.league_tables()), names)
+                                                     records(save.league_tables()), names, links, database_ids, table_names)
                 except (fmsave.FmsaveError, OSError, ValueError) as exc:
                     notes.append(f'Ligas indisponíveis: {exc}')
                 for row in players + staff:

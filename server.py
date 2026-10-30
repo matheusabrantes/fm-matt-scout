@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from scout import GROUPS, ROLES, NATION_NAMES, REGIONS, STAFF_AREAS, STAFF_ROLES, Scout, filter_rows, column_value
+from staff_skills import SCORING_SKILLS
 from presets import Presets, validate_filter
 from salaries import SalarySettings
 from fmsave.models.players import Trait
@@ -28,7 +29,7 @@ def serve(port=0, storage=None):
     lock = threading.RLock()
     state = {'loading': False, 'progress': '', 'error': None}
     layout_path = scout.storage.parent / 'layouts.json'
-    layout_columns = {'name','age','positions','club_name','ca','pa','attribute_sum','goalkeeping_sum','rating','nation_id','reputation','ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot','height_cm','balance','transfer_budget_remaining','wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity','league_name'} | {f'attr_{key}' for group in GROUPS.values() for key in group}
+    layout_columns = {'name','age','positions','club_name','ca','pa','attribute_sum','goalkeeping_sum','rating','nation_id','reputation','ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot','height_cm','balance','transfer_budget_remaining','wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity','league_name','stadium_name'} | {f'attr_{key}' for group in GROUPS.values() for key in group}
     layout_columns.update(('eu_national','staff_role','staff_area','release_fee_domestic','release_fee_foreign'))
 
     def load(path):
@@ -87,7 +88,7 @@ def serve(port=0, storage=None):
                         self.reply({**state, 'meta': scout.meta,
                                     'saves': [{'path': str(p), 'name': p.name, 'size': p.stat().st_size}
                                               for p in sorted(SAVE_DIR.glob('*.fm'), key=lambda p: p.stat().st_mtime, reverse=True)],
-                                    'groups': GROUPS,
+                                    'groups': GROUPS, 'staff_scoring_attributes': SCORING_SKILLS,
                                     'traits': [{'id': t.value, 'name': t.name.lower().replace('_', ' ')} for t in Trait if t.value >= 0],
                                     'roles': {k: {'name': v[0], 'position': v[1], 'weights': v[2]} for k, v in ROLES.items()}})
                         return

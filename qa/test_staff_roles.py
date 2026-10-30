@@ -182,4 +182,4 @@ class AppointmentRoleTests(unittest.TestCase):
         self.assertIsNone(member['wage'])
         self.assertIsNone(member['contract_start'])
         self.assertIsNone(member['contract_end'])
-        self.assertEqual(member['attribute_sum'],380)
+        self.assertEqual(member['attribute_sum'],382)

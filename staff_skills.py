@@ -9,31 +9,40 @@ from fmsave.readers.contracts import build_contract_decoder
 
 from fmsave.readers.staff import find_staff_layouts, _header_reader, _header_values, _read_ability_block
 
+# Offsets are relative to the validated ability block, before either attribute half.
 SKILLS = {
-    'judging_player_ability': (2, 'Avaliação de capacidade'),
-    'judging_player_potential': (3, 'Avaliação de potencial'),
-    'people_management': (4, 'Gestão de pessoas'),
-    'motivating': (5, 'Motivação'),
-    'physiotherapy': (6, 'Fisioterapia'),
-    'tactical_knowledge': (7, 'Conhecimento tático'),
-    'attacking': (8, 'Treino ofensivo'),
-    'defending': (9, 'Treino defensivo'),
-    'fitness': (10, 'Treino físico'),
-    'possession': (11, 'Treino de posse'),
-    'technical': (12, 'Treino técnico'),
-    'tactical': (13, 'Treino tático'),
-    'gk_handling': (15, 'Goleiros: segurar bola'),
-    'gk_distribution': (16, 'Goleiros: distribuição'),
-    'judging_player_data': (18, 'Avaliação de dados'),
-    'sports_science': (21, 'Ciência esportiva'),
-    'negotiating': (23, 'Negociação'),
-    'judging_staff_ability': (24, 'Avaliação de staff'),
-    'set_pieces': (25, 'Bolas paradas'),
+    'authority': (18, 'Autoridade / disciplina'),
+    'working_with_youngsters': (26, 'Trabalho com jovens'),
+    'determination': (27, 'Determinação'),
+    'goalkeeping': (41, 'Treino de goleiros'),
+    'judging_player_ability': (42, 'Avaliação de capacidade'),
+    'judging_player_potential': (43, 'Avaliação de potencial'),
+    'people_management': (44, 'Gestão de pessoas'),
+    'motivating': (45, 'Motivação'),
+    'physiotherapy': (46, 'Fisioterapia'),
+    'tactical_knowledge': (47, 'Conhecimento tático'),
+    'attacking': (48, 'Treino ofensivo'),
+    'defending': (49, 'Treino defensivo'),
+    'fitness': (50, 'Treino físico'),
+    'possession': (51, 'Treino de posse'),
+    'technical': (52, 'Treino técnico'),
+    'tactical': (53, 'Treino tático'),
+    'gk_handling': (55, 'Goleiros: segurar bola (legado)'),
+    'gk_distribution': (56, 'Goleiros: distribuição (legado)'),
+    'judging_player_data': (58, 'Avaliação de dados'),
+    'sports_science': (61, 'Ciência esportiva'),
+    'negotiating': (63, 'Negociação'),
+    'judging_staff_ability': (64, 'Avaliação de staff'),
+    'set_pieces': (65, 'Bolas paradas'),
 }
+RAW_SKILLS = {'authority', 'working_with_youngsters'}
+LEGACY_SKILLS = {'gk_handling', 'gk_distribution'}
+SCORING_SKILLS = tuple(key for key in SKILLS if key not in LEGACY_SKILLS)
 
 
 def skill_values(raw):
-    return {key: max(1, (raw[index] + 2) // 5) if index < len(raw) and 1 <= raw[index] <= 100 else None
+    return {key: (raw[index] if key in RAW_SKILLS else max(1, (raw[index] + 2) // 5))
+            if index < len(raw) and 1 <= raw[index] <= (20 if key in RAW_SKILLS else 100) else None
             for key, (index, _) in SKILLS.items()}
 
 
@@ -61,8 +70,8 @@ def read_staff_skills(game_db, members, layout):
         if member.get('preferences') != {name: getattr(block.preferences, name) for name, _ in layout.named_preference_slots}:
             continue
         count = game_db[header + layout.entry_count_offset]
-        start = header + layout.ability_base_offset + layout.entry_bytes * count + layout.block_40_offset
-        skills = skill_values(game_db[start:start + layout.block_40_count])
+        start = header + layout.ability_base_offset + layout.entry_bytes * count
+        skills = skill_values(game_db[start:start + layout.block_40_offset + layout.block_40_count])
         if uid in found:
             ambiguous.add(uid)
         else:
@@ -104,5 +113,5 @@ def enrich_staff_skills(save, members, clubs):
             member['staff_role_source'] = 'club_appointment'
             member['contract_state'] = 'contracted'
         member['professional_attributes'] = skills.get(member['uid'], {})
-        values = [member['professional_attributes'].get(key) for key in SKILLS]
+        values = [member['professional_attributes'].get(key) for key in SCORING_SKILLS]
         member['attribute_sum'] = sum(values) if all(value is not None for value in values) else None

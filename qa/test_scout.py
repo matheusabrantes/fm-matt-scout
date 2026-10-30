@@ -46,6 +46,21 @@ class ScoutTests(unittest.TestCase):
         for changes in ({'kind':'players'},{'filters':{'staff_role':'bogus_role'}}):
             with self.assertRaises(ValueError):validate_filter({**preset,**changes})
 
+    def test_current_club_league_overrides_old_table_without_treating_cups_as_leagues(self):
+        clubs = [{'uid':1}, {'uid':2}]
+        tables = [{'competition_id':7,'rows':[{'club_uid':1,'team_slot':0},{'club_uid':2,'team_slot':0}]}]
+        club_league_fields(clubs, [{'id':7,'database_id':200}], tables,
+                           {11:'Premier League',200:'Copa'}, {1:{'current_competition_id':9}},
+                           {9:11}, {11:'Premier League'})
+        self.assertEqual(clubs[0]['league_name'], 'Premier League')
+        self.assertIsNone(clubs[1]['league_name'])
+
+    def test_player_determination_keeps_player_source_when_staff_uses_same_key(self):
+        rows = [player(1, attributes={'determination':18}), player(2, attributes={'determination':10})]
+        self.assertEqual([r['uid'] for r in filter_rows(rows, {'attr_determination':'15'})], [1])
+        staff = [{'uid':3,'professional_attributes':{'determination':14},'attributes':{'determination':1}}]
+        self.assertEqual([r['uid'] for r in filter_rows(staff, {'kind':'staff','attr_determination':'13'})], [3])
+
     def test_stadium_home_link_is_not_ownership_and_ambiguous_links_are_absent(self):
         clubs = [{'uid': 1}, {'uid': 2}, {'uid': 3}]
         club_stadium_fields(clubs, [
@@ -63,7 +78,7 @@ class ScoutTests(unittest.TestCase):
         self.assertEqual([r['uid'] for r in filter_rows(staff, {'kind':'staff','attr_motivating':'15','sort':'attr_motivating'})], [1])
         self.assertEqual([r['uid'] for r in filter_rows(staff, {'kind':'staff','sort':'attr_motivating','direction':'asc'})], [2,1,3])
         validate_filter({'name':'Staff','kind':'staff','filters':{'sum_min':'380','attr_motivating':'18','sort':'height_cm'}})
-        with self.assertRaises(ValueError):validate_filter({'name':'Staff','kind':'staff','filters':{'sum_min':'381'}})
+        with self.assertRaises(ValueError):validate_filter({'name':'Staff','kind':'staff','filters':{'sum_min':'421'}})
 
     def test_female_clubs_are_identified_by_database_id_not_name_or_empty_squad(self):
         clubs=[{'uid':1,'unique_id':2000099872,'name':'Chelsea'},

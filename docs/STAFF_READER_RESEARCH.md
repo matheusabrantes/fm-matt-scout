@@ -1,5 +1,14 @@
 # Staff: atributos profissionais e cargos
 
+Atualização dos atributos em 30/10/2026: o adaptador passou de 19 para **23
+campos profissionais decodificados**, incluindo autoridade, trabalho com jovens,
+determinação e treino de goleiros. A soma atual usa 21 competências e tem
+máximo 420; os dois campos antigos de goleiro ficam como legado, fora da soma.
+As escalas,
+contagens e a conferência numérica de Célio Silva no FM estão em
+[`STAFF_ATTRIBUTES_RESEARCH.md`](STAFF_ATTRIBUTES_RESEARCH.md). As seções
+abaixo preservam o histórico e as medições das versões anteriores.
+
 Verificado em 13/10/2026. Escopo: leitura do arquivo `.fm`, sem abrir o FM, ler memória do processo ou instalar dependências.
 
 ## Resultado

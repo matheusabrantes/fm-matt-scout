@@ -38,9 +38,11 @@ vm.runInNewContext(source + `
   }
   updateSalaryLabels();
   assert.equal(document.querySelector('[data-range="balance"]').querySelectorAll('input')[0].min,String(-2e12));
-  kind='clubs';visibleColumns.clubs=['name','balance','transfer_budget_remaining'];
-  rows=[{uid:1,name:'QA',balance:-125,transfer_budget_remaining:500}];
+  kind='clubs';visibleColumns.clubs=['name','stadium_name','balance','transfer_budget_remaining'];
+  rows=[{uid:1,name:'QA',stadium_name:'Neo Química Arena',balance:-125,transfer_budget_remaining:500}];
   renderTable();
+  assert($('table').querySelector('tbody').innerHTML.includes('Neo Química Arena'));
+  assert(!$('table').querySelector('tbody').innerHTML.includes('NaN'));
   assert($('table').querySelector('tbody').innerHTML.includes(moneyFormat(-125)));
   assert($('table').querySelector('tbody').innerHTML.includes('1.000'));
   currentProfile={row:rows[0],history:[],shortlisted:false};profileTab='attributes';renderProfile();
@@ -55,9 +57,11 @@ vm.runInNewContext(source + `
   delete currentProfile.row.loans;renderProfile();assert($('profile').innerHTML.includes('Empréstimos não identificados'));
   currentProfile.row.loans=[];renderProfile();assert($('profile').innerHTML.includes('não significa dívida líquida zero'));
   salaryPrefs.period='month';
-  kind='players';profileTab='transfer';currentProfile={row:{uid:2,name:'QA player',transfer_value:500},history:[],shortlisted:false};renderProfile();
+  kind='players';profileTab='transfer';currentProfile={row:{uid:2,name:'QA player',value:500,transfer_value:500},history:[],shortlisted:false};renderProfile();
   assert($('profile').innerHTML.includes('Valor de mercado · EUR'));
   assert($('profile').innerHTML.includes('1.000'));
+  currentProfile.row.value=0;currentProfile.row.transfer_value=null;currentProfile.row.value_note='Valor zero gravado no save; não significa jogador sem contrato.';renderProfile();
+  assert($('profile').innerHTML.includes(moneyFormat(0)));assert($('profile').innerHTML.includes('não significa jogador sem contrato'));
   salaryPrefs={currency:'USD',period:'month',rate:null,money_rate:null,money_source:null};
   assert(moneyFormat(500).includes('unid. do save'));
   assert(!moneyFormat(500).includes('$'));

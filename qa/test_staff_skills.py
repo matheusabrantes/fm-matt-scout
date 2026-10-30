@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from staff_skills import SKILLS, skill_values, read_staff_skills
+from staff_skills import SKILLS, SCORING_SKILLS, skill_values, read_staff_skills
 from fmsave.readers.staff import find_staff_layouts
 
 
@@ -22,16 +22,41 @@ class StaffSkillsTests(unittest.TestCase):
         self.block[61:87] = bytes([100]*26)
 
     def test_scaled_professional_values_exclude_preferences_and_unknown_slots(self):
-        values = skill_values(bytes([100]*26))
-        self.assertEqual(len(values), 19)
-        self.assertEqual(sum(values.values()), 380)
-        self.assertEqual(skill_values(bytes([1]*26))['motivating'], 1)
-        self.assertEqual(skill_values(bytes([73]*26))['motivating'], 15)
+        raw = bytearray([100]*66)
+        raw[18] = raw[26] = 20
+        values = skill_values(raw)
+        self.assertEqual(len(values), 23)
+        self.assertEqual(sum(values.values()), 460)
+        self.assertEqual(len(SCORING_SKILLS), 21)
+        self.assertEqual(sum(values[key] for key in SCORING_SKILLS), 420)
+        self.assertNotIn('gk_handling', SCORING_SKILLS)
+        self.assertNotIn('gk_distribution', SCORING_SKILLS)
+        self.assertEqual(skill_values(bytes([1]*66))['motivating'], 1)
+        self.assertEqual(skill_values(bytes([73]*66))['motivating'], 15)
         self.assertIsNone(skill_values(b'')['motivating'])
-        self.assertIsNone(skill_values(bytes([101]*26))['motivating'])
+        self.assertIsNone(skill_values(bytes([101]*66))['motivating'])
         skills, selectors = read_staff_skills(bytes(self.block), [self.member], self.layout)
-        self.assertEqual(skills[123], values)
+        self.assertEqual(skills[123]['motivating'], 20)
+        self.assertEqual(skills[123]['authority'], 10)
+        self.assertEqual(skills[123]['working_with_youngsters'], 10)
+        self.assertEqual(skills[123]['determination'], 2)
+        self.assertEqual(skills[123]['goalkeeping'], 20)
         self.assertEqual(selectors, {123:457})
+
+    def test_authority_youngsters_and_determination_use_separate_scales(self):
+        raw = bytearray([50]*66)
+        raw[18], raw[26], raw[27], raw[41] = 17, 11, 68, 40
+        values = skill_values(raw)
+        self.assertEqual(values['authority'], 17)
+        self.assertEqual(values['working_with_youngsters'], 11)
+        self.assertEqual(values['determination'], 14)
+        self.assertEqual(values['goalkeeping'], 8)
+        for offset, key in ((18, 'authority'), (26, 'working_with_youngsters')):
+            damaged = raw.copy(); damaged[offset] = 21
+            self.assertIsNone(skill_values(damaged)[key])
+        for value in (0, 101):
+            damaged = raw.copy(); damaged[27] = value
+            self.assertIsNone(skill_values(damaged)['determination'])
 
     def test_rejects_mismatched_identity_ability_preferences_and_invalid_blocks(self):
         for offset, value in [(8,124),(12,9),(21,101),(34,0),(35,9),(61,0)]:
@@ -49,7 +74,7 @@ class StaffSkillsTests(unittest.TestCase):
         block = self.block.copy()
         struct.pack_into('<II', block, 4, uid, 917111893)
         skills, selectors = read_staff_skills(bytes(block), [member], self.layout)
-        self.assertEqual(sum(skills[uid].values()), 380)
+        self.assertEqual(sum(skills[uid].values()), 422)
         self.assertEqual(selectors, {uid: 457})
         for offset, value in [(12, 9), (21, 101), (35, 9), (61, 0)]:
             damaged = block.copy(); damaged[offset] = value
