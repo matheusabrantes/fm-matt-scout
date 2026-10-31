@@ -249,11 +249,28 @@ function orderedColumns(columns, forKind = kind) {
   return [...columns].sort((a,b) => rank(a)-rank(b));
 }
 function renderColumnOptions() {
+  $('column-search').value='';
+  $('column-search-empty').hidden=true;
   const sections = {...columnGroups[kind]};
   const known = Object.values(sections).flat();
   const other = visibleColumns[kind].filter(key => !known.includes(key));
   if(other.length)sections['Outras colunas salvas']=other;
   $('column-options').innerHTML=`<div class="column-sections">${Object.entries(sections).map(([group,keys])=>`<section class="column-section"><h3>${esc(group)}</h3>${keys.map(key=>`<label class="checkbox-label"><input data-column="${key}" type="checkbox" ${visibleColumns[kind].includes(key)?'checked':''} ${key==='name'?'disabled':''}>${esc(columnLabel(key))}</label>`).join('')}</section>`).join('')}</div>${kind==='players'?'<div class="column-presets"><span>Atributos</span>'+['Ataque','Criação','Defesa','Físico','Limpar'].map(label=>`<button data-column-preset="${label}">${label}</button>`).join('')+'</div>':''}`;
+}
+function filterColumnOptions() {
+  const normalize = value => value.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLocaleLowerCase('pt-BR');
+  const search = normalize($('column-search').value.trim());
+  let matches = 0;
+  for(const section of $('column-options').querySelectorAll('.column-section')) {
+    let count = 0;
+    for(const label of section.querySelectorAll('.checkbox-label')) {
+      label.hidden = !normalize(label.textContent).includes(search);
+      if(!label.hidden)count++;
+    }
+    section.hidden = count === 0;
+    matches += count;
+  }
+  $('column-search-empty').hidden = matches > 0;
 }
 function columnWidth(key, pairedAbility=false) {
   return columnWidths[kind][key] ?? (key==='ca'&&pairedAbility?128:key==='nation_id'&&kind==='clubs'?140:key.startsWith('attr_')?46:defaultWidths[key]||(moneyColumns.includes(key)?110:90));
@@ -805,7 +822,7 @@ document.addEventListener('click',action(async event => {
     case 'clear-selection': selection.clear();updateSelection();return;
     case 'columns': {
       renderColumnOptions();
-      $('columns-dialog').showModal(); break;
+      $('columns-dialog').showModal();$('column-search').focus(); break;
     }
     case 'save-columns': {
       visibleColumns[kind]=[...document.querySelectorAll('[data-column]:checked')].map(c=>c.dataset.column);
@@ -910,9 +927,10 @@ $('table').addEventListener('dblclick',event=>{
   delete columnWidths[kind][handle.closest('th').dataset.columnKey];renderTable();saveColumnWidths();
 });
 $('picker-search').addEventListener('input',renderPickerOptions);
+$('column-search').addEventListener('input',filterColumnOptions);
 document.addEventListener('keydown',action(async event=>{
   const key=event.key.toLowerCase();
-  if((event.metaKey||event.ctrlKey)&&key==='f'){event.preventDefault();if(meta)$('search').focus();return;}
+  if((event.metaKey||event.ctrlKey)&&key==='f'){event.preventDefault();if($('columns-dialog').open)$('column-search').focus();else if(meta)$('search').focus();return;}
   if(event.metaKey&&event.ctrlKey&&key==='s'){event.preventDefault();$('sidebar-toggle').click();return;}
   if(event.metaKey&&key==='r'&&meta){event.preventDefault();if(!loading)window.loadSave(meta.path);return;}
   if(event.key==='Escape'){
