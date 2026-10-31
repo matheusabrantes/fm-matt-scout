@@ -9,36 +9,38 @@
   <script src="app.js" type="module"></script>
 </head>
 <body>
+  <div class="window-controls"><button id="sidebar-toggle" title="Ocultar barra lateral (⌃⌘S)" aria-label="Ocultar barra lateral" aria-expanded="true"><svg width="18" height="15" viewBox="0 0 18 15" fill="none" stroke="currentColor" stroke-width="1.35"><rect x="1" y="1" width="16" height="13" rx="3"/><path d="M6.5 1v13M2.9 4.3h1.7M2.9 6.7h1.7M2.9 9.1h1.7"/></svg></button></div>
+  <aside id="sidebar" aria-label="Navegação"><div class="sidebar-inner">
+    <nav class="tabs" aria-label="Área de scouting">
+      <h2>Banco de dados</h2>
+      <button data-view="players" aria-current="page"><span data-icon="person"></span>Jogadores <span data-count="players"></span></button>
+      <button data-view="staff"><span data-icon="staff"></span>Staff <span data-count="staff"></span></button>
+      <button data-view="clubs"><span data-icon="club"></span>Clubes <span data-count="clubs"></span></button>
+      <h2>Scouting</h2>
+      <button data-view="shortlist"><span data-icon="star"></span>Minha lista <span id="shortlist-count">0</span></button>
+      <button data-view="squad"><span data-icon="home"></span>Meu time <span id="squad-count"></span></button>
+      <h2>Pesquisas salvas</h2><div id="saved-searches"></div>
+    </nav>
+    <button id="save-card" aria-expanded="false" aria-controls="save-menu"><span id="save-badge" class="club-badge">FM</span><span class="save-card-copy"><strong id="save-name">Nenhum save aberto</strong><small id="save-date">Abrir save…</small></span><span aria-hidden="true">⌃</span></button>
+  </div></aside>
+  <div class="app-main">
   <header class="titlebar">
-    <div class="identity"><strong>FM Matt Scout <span>26</span></strong><small>Scouting para macOS</small></div>
-    <div class="save-info"><span id="save-name">Nenhum save aberto</span><small id="save-date">Abra um save do Football Manager 26</small></div>
-    <button id="reload" disabled>Recarregar</button>
-    <button id="salary-settings" disabled>Moeda / salários…</button>
-    <button id="open" class="primary">Abrir save…</button>
+    <div class="toolbar-heading"><strong id="list-title">FM Matt Scout 26</strong><small id="result-count">Nenhum save aberto</small></div>
+    <div id="toolbar-actions" hidden><label class="search-field"><span data-icon="search"></span><input id="search" type="search" aria-label="Pesquisar" placeholder="Buscar jogador, clube ou país" autocomplete="off"><kbd>⌘F</kbd></label><button id="advanced-button" aria-expanded="false" aria-controls="advanced"><span data-icon="filter"></span>Filtros <span id="filter-count" hidden></span></button><button id="columns"><span data-icon="columns"></span>Colunas</button><button id="list-import" title="Importar lista" aria-label="Importar lista"><span data-icon="import"></span></button><button id="export" title="Exportar lista" aria-label="Exportar lista" disabled><span data-icon="export"></span></button></div>
   </header>
-  <nav class="tabs" aria-label="Área de scouting">
-    <button data-view="players" aria-current="page">Jogadores</button>
-    <button data-view="staff">Staff</button>
-    <button data-view="clubs">Clubes</button>
-    <button data-view="shortlist">Minha lista <span id="shortlist-count">0</span></button>
-    <button data-view="squad">Meu time</button>
-    <div class="tab-end"><button id="columns">Colunas…</button><button id="list-import">Importar lista</button><button id="export" disabled>Exportar lista</button></div>
-  </nav>
-  <section id="filters" class="ribbon" aria-label="Filtros" hidden>
-    <label class="search-field">Pesquisar<input id="search" type="search" placeholder="Nome do jogador ou clube" autocomplete="off"></label>
+  <section id="filters" class="legacy-controls" aria-label="Filtros" hidden>
     <label>Posições<input id="position" type="hidden"><button id="quick-position">Todas as posições</button></label>
     <label>Idade mín.<input id="age_min" type="number" min="1" max="100" placeholder="Qualquer"></label>
     <label>Idade máx.<input id="age_max" type="number" min="1" max="100" placeholder="Qualquer"></label>
     <label title="CA e PA ainda não têm confirmação independente no leitor">CA mín. †<input id="ca_min" type="number" min="1" max="200" placeholder="1–200"></label>
     <label title="CA e PA ainda não têm confirmação independente no leitor">PA mín. †<input id="pa_min" type="number" min="1" max="200" placeholder="1–200"></label>
     <label class="sum-filter">Soma mín.<input id="sum_min" type="number" min="36" max="720" placeholder="36–720"></label>
-    <button id="advanced-button" aria-expanded="false" aria-controls="advanced">Pesquisar / filtros…</button>
-    <button id="clear">Limpar</button>
+    <button id="clear">Limpar filtros</button>
     <label id="squad-scope-label" hidden>Médias do elenco<select id="squad_scope" disabled><option value="first">Equipe principal</option><option value="all">Todos os vinculados</option></select></label>
     <label id="player-squad-label">Elenco<select id="squad"><option value="all">Todos</option><option value="first">Equipe principal</option><option value="other">Outras equipes do clube</option></select></label>
   </section>
   <dialog id="advanced" aria-labelledby="search-title">
-    <div class="dialog-heading"><h2 id="search-title">Pesquisa de jogadores</h2><button data-close="advanced">Ver resultados</button></div>
+    <div class="dialog-heading"><h2 id="search-title">Filtros de jogadores</h2><button data-close="advanced" aria-label="Cancelar filtros">Fechar</button></div>
     <div id="search-tabs" class="search-tabs" role="tablist" aria-label="Categorias de filtros"></div>
     <section id="filter-general" class="filter-page"><div id="general-fields"></div><div id="pitch-panel"><h3>Posição no campo</h3><p class="fine">Clique para selecionar. Clique de novo para remover.</p><div id="pitch" class="pitch" aria-label="Selecionar posição"><div class="pitch-lines" aria-hidden="true"></div></div><p id="pitch-selection" class="fine">Todas as posições</p></div></section>
     <section id="filter-contract" class="filter-page" hidden><div id="contract-fields"></div></section>
@@ -46,45 +48,48 @@
     <section id="filter-traits" class="filter-page" hidden><p class="fine">Todos os movimentos marcados serão exigidos. Apenas movimentos com nome identificado estão disponíveis para pesquisa.</p><div id="trait-grid"></div><input id="traits" type="hidden"></section>
     <div id="conditions" class="condition-summary"></div>
     <div class="preset-bar"><label>Filtros por posição<select id="preset"><option value="">Selecione um filtro salvo</option></select></label><button id="apply-preset">Aplicar</button><button id="save-preset">Salvar filtro…</button><button id="remove-preset" disabled>Excluir</button><button id="export-presets">Exportar filtros</button><button id="import-presets">Importar filtros</button><input id="preset-file" type="file" accept="application/json,.json" hidden></div>
-    <div class="filter-footer"><span id="filter-result-count">Abra um save para pesquisar</span><button id="clear-search">Limpar filtros</button><button class="primary" data-close="advanced">Aplicar e ver resultados</button></div>
-    <p class="fine">As opções são pesquisadas pelo nome. Região da nacionalidade usa o país do jogador. Região onde atua usa o país da liga do clube, que pode diferir da localização física. A liga atual do clube ainda não é identificada com segurança; copas e fases não são oferecidas como divisões.</p>
+    <div class="filter-footer"><span id="filter-result-count">Abra um save para pesquisar</span><button id="clear-search">Limpar filtros</button><button id="apply-filters" class="primary">Aplicar</button></div>
   </dialog>
   <div id="message" role="status" aria-live="polite" hidden></div>
   <main>
     <section id="welcome">
-      <div class="welcome-heading"><span class="file-label">SAVE DO FM26</span><h1>Seu próximo reforço<br>está no seu save.</h1><p>Abra sua carreira para buscar jogadores, comparar atributos e montar sua lista de observação.</p></div>
-      <div class="save-picker"><h2>Saves neste Mac</h2><div id="save-list"></div><p class="fine">Leitura feita em uma cópia temporária. O arquivo original fica intacto.</p></div>
+      <div class="welcome-heading"><h1>Abra um save do FM26</h1><p>Jogadores, staff e clubes aparecem aqui depois da leitura.</p></div>
+      <div class="save-picker"><div id="save-list"></div><div class="welcome-footer"><span>A leitura usa uma cópia temporária. O original fica intacto.</span><button id="open">Escolher arquivo…</button></div></div>
     </section>
+    <section id="loading-view" hidden><span class="loading-badge">FM</span><strong id="loading-file">Lendo save…</strong><progress aria-label="Leitura do save"></progress><span id="loading-step" role="status">Preparando leitura…</span></section>
     <section id="workspace" hidden>
       <div class="results">
-        <div class="list-heading"><h1 id="list-title">Jogadores</h1><span id="result-count"></span><span id="sort-summary">PA · desempate pela soma</span></div>
+        <div id="filter-bar"><div id="entity-segments" class="segmented" hidden></div>
+        <span id="active-filters"></span><button id="add-filter" title="Adicionar filtro" aria-label="Adicionar filtro">+</button></div>
+        <span id="sort-summary" class="sr-only">PA · desempate pela soma</span>
         <div id="selection-actions" class="selection-actions" role="group" aria-label="Ações dos selecionados" hidden>
           <span id="selection-count" role="status" aria-live="polite">0 selecionados</span>
           <button id="compare" title="Selecione exatamente dois registros para comparar" disabled>Comparar</button>
           <button id="list-add" disabled>Adicionar à lista</button>
           <button id="list-remove" disabled hidden>Remover da lista</button>
           <button id="clear-selection" disabled>Limpar seleção</button>
-          <span id="selection-hint" class="fine"></span>
+          <span id="selection-hint" class="sr-only"></span>
         </div>
         <div id="opportunities" class="opportunities" role="group" aria-label="Busca rápida de jogadores">
           <input id="availability" type="hidden">
-          <span>Oportunidades</span>
           <button data-availability="" aria-pressed="true">Todos</button>
-          <button data-availability="free" aria-pressed="false">Sem contrato</button>
-          <button data-availability="expiring_6" aria-pressed="false">Expira em até 6 meses</button>
-          <button data-availability="expiring_12" aria-pressed="false">Expira em até 12 meses</button>
-          <button data-availability="transfer_listed" aria-pressed="false">Lista de transferências</button>
-          <button data-availability="loan_listed" aria-pressed="false">Lista de empréstimos</button>
-          <p id="availability-note" class="fine" role="status"></p>
+          <button data-availability="free" aria-pressed="false">Livres</button>
+          <button data-availability="expiring_6" aria-pressed="false">≤ 6 meses</button>
+          <button data-availability="expiring_12" aria-pressed="false">≤ 12 meses</button>
+          <button data-availability="transfer_listed" aria-pressed="false">À venda</button>
+          <button data-availability="loan_listed" aria-pressed="false">Empréstimo</button>
+          <p id="availability-note" class="sr-only" role="status"></p>
         </div>
         <div class="table-scroll"><table id="table"><thead></thead><tbody></tbody></table></div>
         <div class="pagination"><span id="page-info" role="status" aria-live="polite"></span><button id="next" disabled>Carregar mais</button><label>Linhas por clique<select id="page-size"><option>50</option><option selected>100</option><option>200</option></select></label></div>
-        <div id="table-note" class="table-note">Soma: 36 atributos de linha. † CA/PA: leitura experimental. Nota: estimativa Matt Scout.</div>
+        <details id="reading-notes"><summary>Sobre os dados †</summary><div id="table-note" class="table-note">Soma: 36 atributos de linha. † CA/PA: leitura experimental. Nota: estimativa Matt Scout.</div></details>
       </div>
-      <aside id="profile" aria-label="Perfil do registro"><div class="profile-empty"><h2>Abra um perfil</h2><p>Clique no nome para ver atributos, contrato e notas por posição.</p><p>Marque dois jogadores para comparar.</p></div></aside>
     </section>
   </main>
   <footer><span id="footer-state">FM26 · Somente leitura</span><span>Dados locais · fmsave 0.5.10</span></footer>
+  </div>
+  <aside id="profile" aria-label="Perfil do registro" inert></aside>
+  <dialog id="save-menu" aria-label="Save e preferências"><h3>Moeda</h3><div id="currency-segments" class="segmented"></div><h3>Salários</h3><div id="period-segments" class="segmented"></div><hr><button id="salary-settings" disabled>Conferir conversão…</button><button id="reload" disabled>Recarregar save <kbd>⌘R</kbd></button><button id="open-other">Abrir outro save… <kbd>⌘O</kbd></button><button id="close-save">Fechar save</button></dialog>
   <dialog id="open-dialog" aria-labelledby="open-title"><div class="dialog-heading"><h2 id="open-title">Abrir save do FM26</h2><button data-close="open-dialog" aria-label="Fechar">Fechar</button></div><div id="dialog-saves"></div><div id="path-form"><label>Caminho do arquivo .fm<input id="save-path" placeholder="/Users/…/games/carreira.fm"></label><button id="load-path" class="primary">Carregar save</button></div><p class="fine">No aplicativo Mac, o botão Abrir save usa o seletor de arquivos do macOS.</p></dialog>
   <dialog id="compare-dialog" aria-labelledby="compare-title"><div class="dialog-heading"><h2 id="compare-title">Comparar jogadores</h2><button data-close="compare-dialog">Fechar</button></div><div id="comparison"></div></dialog>
   <dialog id="preset-dialog" aria-labelledby="preset-title"><div class="dialog-heading"><h2 id="preset-title">Salvar filtro tático</h2><button data-close="preset-dialog">Fechar</button></div><p>Salva posição, clube, idade, nacionalidade, liga, atributos e ordenação atuais.</p><label>Nome do filtro<input id="preset-name" maxlength="120" placeholder="Ex.: Volante · 4-3-3 · pressão alta"></label><button id="confirm-preset" class="primary">Salvar filtro</button></dialog>

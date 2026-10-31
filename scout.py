@@ -387,6 +387,7 @@ def filter_rows(rows, query, shortlist=(), game_date=None):
     valid.update(('staff_area','staff_role','height_cm','balance','transfer_budget_remaining',
                   'wage_budget_weekly','league_name','stadium_name','stadium_seated_capacity','stadium_expansion_capacity',
                   'release_fee_domestic','release_fee_foreign','model_value','model_fee'))
+    valid.add('contract_end')
     if sort not in valid | attribute_columns:
         raise ValueError('Coluna de ordenação inválida.')
     def sort_value(row):

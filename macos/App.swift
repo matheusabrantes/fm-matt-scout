@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let controller = WKUserContentController()
         controller.add(self, name: "openSave")
         controller.add(self, name: "saveFile")
+        controller.add(self, name: "copyName")
         let config = WKWebViewConfiguration()
         config.userContentController = controller
         web = WKWebView(frame: .zero, configuration: config)
@@ -113,6 +114,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.frameInfo.isMainFrame, message.frameInfo.securityOrigin.host == "127.0.0.1" else { return }
         if message.name == "openSave" { openSave(); return }
+        if message.name == "copyName", message.frameInfo.request.url?.port == web.url?.port,
+           let name = message.body as? String, !name.isEmpty, name.utf8.count <= 1024 {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(name, forType: .string)
+            return
+        }
         if message.name == "saveFile", let body = message.body as? [String: String],
            let filename = body["filename"], let contents = body["contents"] {
             let panel = NSSavePanel()

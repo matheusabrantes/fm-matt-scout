@@ -1,17 +1,23 @@
 # FM Matt Scout
 
-Direção fornecida: aplicativo de scouting para macOS, com visual e fluxo semelhantes ao FM Genie Scout. Uso pessoal nos saves de FM26; sem edição do jogo.
+Direção aprovada em 30/10/2026: FM_MATT_SCOUT_DESIGN_SYSTEM.md e FM Matt Scout Prototype.dc.html. O app real é a fonte de regras/dados; o protótipo é a fonte visual. Mapeamento e diferenças em [docs/REDESIGN.md](docs/REDESIGN.md).
 
 ## Composição
 
-Barra de comandos, abas Jogadores / Staff / Clubes / Minha lista / Meu time, filtros compactos, tabela densa e perfil ao lado. A tabela é o foco. Não usar uma landing page, cards de métricas ou dados fictícios.
+Sidebar recolhível de 220px, toolbar de 52px, faixa de filtros de 46px, cabeçalho de 30px e linhas de 34px. Inspector de 340px fechado por padrão, aberto por seleção explícita e descartável. A tabela ocupa o espaço disponível para facilitar a leitura de grandes listas. Navegação: Jogadores, Staff, Clubes, Minha lista, Meu time e pesquisas salvas reais.
 
-## Aparência
+## Aparência e razões
 
-Superfícies claras, barra superior escura, seleção azul e números alinhados. Tipografia nativa do macOS para legibilidade em tabelas. Acento quente pontual na soma dos atributos, para identificar o critério pedido pelo usuário. Escala de atributos verde/âmbar com números legíveis; cor nunca é a única informação. Controles retangulares, raio 4 px.
+- Branco e cinzas frios: superfícies neutras da referência para manter o foco nos dados.
+- Azul #2F6FED: seleção e ações; cores de posição e familiaridade comunicam significados distintos.
+- Tipografia de sistema: SF Pro no Mac, com números tabulares para comparação entre linhas.
+- Densidade e espaçamentos da referência: mais registros legíveis por janela, sem cartões decorativos.
+- Atributos na tabela: rampa contínua oklch(0.25 + 0.60t, 0.03 + 0.16t, 132), t=(valor−1)/19; no perfil, cor de texto por faixa. Números reais permanecem visíveis.
+- Ícones SVG da referência: identificam navegação e controles; o ícone adicional de cópia foi pedido pelo usuário e muda temporariamente para check.
+- Badges neutros derivados do nome e bandeiras locais: não inventar escudos, cores oficiais ou ativos ausentes no leitor.
 
-ENERGY 1 / RHYTHM 1 / MOTION 1: consistência de ferramenta de análise, sem animação decorativa. Transição curta apenas em seleção e abertura de perfil.
+ENERGY 1 / RHYTHM 1 / MOTION 2. Transições de painéis .28s, sheets .22s e popovers .16s; respeitar redução de movimento. A densidade uniforme serve à comparação, e a animação mostra a origem de painéis/sheets.
 
 ## Estados e confiança
 
-Sem save: seleção dos arquivos locais e explicação da abertura. Carregando: progresso textual. Falha: causa legível e possibilidade de tentar outro arquivo. Campo não decodificado: “Não disponível”, nunca zero. Notas calculadas devem mostrar fórmula; CA/PA carregam a ressalva do leitor. Valores monetários não recebem símbolo de moeda sem conversão confirmada.
+Sem save: arquivos reais e seletor nativo. Carregando: progresso real do leitor. Erros: mensagem legível. Campos não lidos: indisponíveis, nunca zero inventado. Ratings próprios conservam fórmulas/origem. Moeda depende de conversão conferida. Filtros em rascunho aplicam ou descartam com clareza. Nenhum dado ou cálculo simulado do protótipo entra na produção. Preservar acessibilidade, controles de teclado, persistência e todas as funções de produção ausentes da referência.
