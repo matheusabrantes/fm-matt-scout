@@ -1,120 +1,127 @@
-# FM Matt Scout 26
+# FM Matt Scout
 
-Aplicativo local de scouting para macOS, inspirado no fluxo do Genie Scout. Versão 0.1 com leitura real de saves FM26 e cobertura parcial da especificação. A leitura usa `fmsave 0.5.10` (MIT); a janela usa AppKit e WebKit. Não há comandos de edição de saves nem acesso à memória do jogo.
+### A local scouting companion for Football Manager 2026 on macOS.
 
-## Abrir neste Mac
+[![Platform: macOS](https://img.shields.io/badge/platform-macOS-24292f)](#compatibility)
+[![Data: FM26 saves](https://img.shields.io/badge/data-FM26_saves-2f6fed)](#how-it-works)
+[![Status: development preview](https://img.shields.io/badge/status-development_preview-87622b)](#development-status)
 
-```sh
-open "/Applications/FM Matt Scout.app"
-```
+Find prospects, compare attributes, and build your shortlist from your own career. FM Matt Scout is an independent project inspired by FM Genie Scout's scouting workflow, built to offer Apple users a local alternative with its own interface and implementation.
 
-Para reconstruir após mudar código:
+**Development preview · Build from source · Portuguese interface**
 
-```sh
-./build.command
-```
+[Overview](#overview) · [Screenshots](#screenshots) · [Features](#features) · [Compatibility](#compatibility) · [Getting started](#getting-started) · [Documentation](#documentation)
 
-O build usa Python 3.12 instalado em `/opt/homebrew/bin/python3.12`, a `.venv` deste projeto e as ferramentas Swift do macOS. Este aplicativo local depende da `.venv` no caminho atual do projeto. Mover o projeto exige reconstruir. Um instalador independente, assinado para distribuição e notarizado ainda não foi preparado.
+<a href="docs/assets/scout-light.jpg"><img src="docs/assets/scout-light.jpg" alt="FM Matt Scout's macOS window in light mode: real FM26 players including Lionel Messi, Kylian Mbappé, and Erling Haaland in the owner's career" width="1440" /></a>
 
-A compilação instala e atualiza uma única cópia em Aplicativos, disponível também pela busca do macOS. Feche o app antes de reconstruir. A instalação fica fora do provedor de arquivos da pasta do projeto, que recria metadados incompatíveis com a verificação de assinatura de bundles. O ZIP em `dist/FM Matt Scout.zip` preserva uma cópia sem esses metadados; ele mantém a mesma dependência da `.venv`. Os dados e preferências continuam em `~/Library/Application Support/FM Matt Scout/`.
+<sub>The running macOS application with real FM26 career data.</sub>
 
-## Fluxo
+## Overview
 
-Abra uma carreira pelo seletor nativo ou pelos saves encontrados na pasta padrão. A barra lateral reúne Jogadores, Staff, Clubes, Minha lista, Meu time e pesquisas salvas; o botão no alto ou ⌃⌘S permite recolhê-la. Clique em **Filtros** para abrir a pesquisa por categorias: alterações ficam em rascunho com contagem real até **Aplicar**; fechar ou Esc descarta o rascunho. As condições são combinadas com AND. Clicar num nome/linha abre o painel direito; fechar, Esc ou clicar novamente recupera a largura da lista. O painel começa fechado.
+FM Matt Scout reads Football Manager 26 save files and puts players, staff, and clubs into searchable tables. Explore a profile, filter for a position and attributes, compare two candidates, or keep a shortlist across sessions.
 
-Acima da lista de jogadores, **Livres**, **≤ 6 meses** e **≤ 12 meses** aplicam a busca com um clique e preservam os demais critérios. Os prazos usam a data da carreira e meses de calendário; contratos já vencidos e datas alternativas sem contrato confirmado ficam fora. Jogadores livres exigem ausência explícita de vínculo e termos atuais; dados incompletos permanecem não identificados. O atalho também fica salvo nos filtros exportados. **À venda** e **Empréstimo** usam os estados conferidos no FM para o build 26.3.2; estados não identificados ficam fora. Estar emprestado é diferente de estar listado para empréstimo.
+The application runs locally in an AppKit/WebKit window. It reads a temporary copy of your save, without editing the original or accessing the running game's memory. Data coverage is still evolving, and the interface identifies unavailable fields and estimates.
 
-As colunas configuráveis **Rescisão geral**, **Rescisão nacional** e **Rescisão internacional** separam os três tipos; nacional/internacional referem-se ao país do clube atual. Cláusulas por rebaixamento, não promoção e divisão superior ficam fora dessas três colunas. Essas condições aparecem com o nome no perfil. Selecionar um tipo de cláusula no filtro aplica os limites à menor cláusula dos tipos selecionados. Tabela, perfil e filtros de cláusulas, valor de mercado, saldo e orçamento de transferências usam a moeda escolhida em **Moeda / salários…**. Saldos negativos são preservados. A conversão pode ser conferida pelo valor de uma rescisão do perfil aberto, salva por carreira/moeda e independente do período salarial. Sem essa referência, usa a taxa salarial aproximada, quando disponível; sem nenhuma taxa, identifica unidades do save. Filtros salvos conservam os limites na unidade original para manter a mesma busca ao trocar moeda. Detalhes da correção em `docs/CONTRACT_READER.md`.
+## Screenshots
 
-**Valor de mercado** e **Compra estimada** aparecem por padrão na lista de jogadores, no bloco de mercado e contrato. Layouts antigos são atualizados uma vez, preservando as demais colunas. Depois, suas alterações em Colunas continuam sendo respeitadas. O primeiro prioriza o valor positivo do save e usa regressão nas lacunas; o segundo estima uma taxa de transferência. Ambos têm filtros mínimo/máximo na aba Contrato e ficam salvos nos layouts/filtros. O perfil contratual mostra a origem e os intervalos do modelo. A marca ≈ identifica estimativas. Valores originais, inclusive zero, ficam no perfil e na coluna opcional Valor lido do save. As faixas estimadas não são as faixas exibidas pelo FM nem um preço garantido de proposta aceita. O modelo é experimental: a regressão pura ficou dentro de apenas 1 das 8 faixas observadas em Corinthians/Real Madrid. Fórmulas públicas, versão fixa, adaptações e controles em `docs/PLAYER_VALUES_RESEARCH.md`.
+**Dark mode and player attributes**
 
-O campo dos filtros permite selecionar uma ou mais posições com o mouse ou teclado. A busca inclui jogadores com familiaridade de pelo menos 15 em qualquer posição marcada. Clique novamente para remover uma seleção. No perfil, o campo mostra a familiaridade real de 1–20 em três níveis: Forte ≥18, Média 11–17 e Fraca 1–10. Os níveis do perfil não alteram o critério de busca. Atributos acrescentados à tabela usam a rampa contínua de cores aprovada; os atributos no perfil usam cor de texto.
+<a href="docs/assets/scout-dark.jpg"><img src="docs/assets/scout-dark.jpg" alt="The running FM Matt Scout macOS app in dark mode with real FM26 players and Lionel Messi's attribute profile" width="1440" /></a>
 
-O ícone ao lado do nome no perfil copia o nome exibido de jogador, staff ou clube. Ele muda para um check por 1,5 segundo e volta ao símbolo de copiar, sem confirmação ou toast. A coluna de cidadania da União Europeia tem o título **EU**; sua regra continua considerando todas as nacionalidades lidas.
+<details>
+<summary>Advanced attribute filters</summary>
 
-Clube, nacionalidade, país onde atua, regiões, tipo de contrato, status no elenco e cláusula têm busca interna e seleção múltipla. Dentro de cada campo as escolhas são OR; entre campos, AND. Por exemplo: Corinthians **ou** Palmeiras, **e** idade até 21, **e** passe mínimo 14. Nacionalidade e sua região consideram todas as cidadanias lidas, incluindo adicionais; o perfil lista cada uma e marca UE. O filtro UE aceita Sim/Não/Qualquer e há coluna correspondente. Movimentos preferidos mantêm AND: o jogador precisa ter todos os traits marcados. Liga do clube agora tem filtro por nome com cobertura parcial das tabelas nacionais do save; detalhes em `docs/LEAGUES.md`.
+<a href="docs/assets/filters.png"><img src="docs/assets/filters.png" alt="Advanced attribute filters in the current dark interface with the real FM26 career loaded, captured during browser QA" width="1440" /></a>
 
-Ao filtrar por clube, **Todos** inclui a equipe principal e as equipes secundárias vinculadas. O seletor Elenco permite restringir à principal ou às demais. As categorias secundárias usam o número do vínculo no save; os nomes “sub-20”, “reservas”, etc. ainda não foram confirmados pelo leitor. O filtro por clube inclui afiliadas que o leitor vincula ao mesmo clube.
+</details>
 
-**Soma (36)** = 14 técnicos + 14 mentais + 8 físicos, peso igual. Intervalo 36–720. CA/PA, ocultos, personalidade e goleiro ficam fora dessa soma. Um atributo ausente ou inválido deixa o total indisponível. A soma serve de desempate na ordenação de jogadores. Goleiros têm também uma soma separada de 11 atributos específicos.
+All three images show the implemented interface with real career data, including dark mode and advanced filters. Open an image for full resolution. [Capture provenance](docs/assets/README.md).
 
-Clique em Colunas ou com o botão direito em um cabeçalho para escolher indicadores e atributos individuais. Salvar layout guarda a configuração por lista, disponível ao reabrir o app. Clique normalmente no cabeçalho para ordenar. Cada linha de jogador ou staff tem uma única caixa de seleção. A caixa do cabeçalho marca/desmarca todas as linhas já carregadas da pesquisa atual e indica seleção parcial. Para incluir mais resultados, use Carregar mais e marque o cabeçalho novamente. Marque dois e clique em Comparar; marque um ou mais e use Adicionar à lista. Repetir a adição mantém quem já estava salvo. Na Minha lista ou no filtro Somente na minha lista, Remover da lista atua sobre os marcados. Limpar seleção desmarca os registros. A marca Na lista informa quem já está salvo; clicar no nome abre o perfil. A seleção permite procurar jogadores em pesquisas diferentes antes de comparar e é limpa ao trocar de tipo de registro ou recarregar a carreira.
+## Features
 
-Arraste a alça na borda direita de cada cabeçalho para aumentar ou diminuir a largura. Pelo teclado, foque a alça e use ←/→ (Shift para passos maiores). Dois cliques restauram a largura daquela coluna; Restaurar padrão também limpa as larguras da lista atual. Os ajustes ficam salvos neste Mac, separadamente para jogadores, staff e clubes. O clique no título continua ordenando normalmente.
+- **Search players, staff, and clubs.** Combine attributes, age, positions, nationality, club, league, and contract criteria. Save searches and import or export filter presets.
+- **Find opportunities.** Shortcuts for free agents, expiring contracts, transfer-listed players, and loan-listed players, where the reader identifies those states.
+- **Inspect and compare.** View attributes, positional familiarity, contracts, and local history. Compare two players or two staff members; own positional ratings disclose their weights and formula.
+- **Keep a shortlist.** Add or remove selections in batches. Export basic CSV data or round-trip a Matt Scout JSON list.
+- **Review clubs and squads.** Browse squad averages, the managed team, stadium details, and decoded financial fields with source and coverage information.
+- **Shape the workspace.** Sort, choose and resize columns, save layouts, collapse the sidebar, and switch between light and dark themes.
 
-Contratos na tabela usam mês e ano curtos, por exemplo **JUN 27**, com a data completa no tooltip. Minha lista mostra o total de jogadores salvos na carreira aberta desde o carregamento, preservado ao navegar para Staff ou Clubes; sem carreira aberta, o número fica vazio.
+Some decoded fields and calculations remain experimental. See [development status](#development-status) before relying on them for a decision.
 
-Os indicadores dos clubes usam cores da instalação local do FM26. O vínculo usa o identificador confirmado no rodapé do registro do próprio clube, incluindo lacunas entre registros; não depende de nomes. A base da versão de origem da carreira tem prioridade. No COR, são **31.653 dos 32.867 clubes visíveis**: 1.211 têm cores zeradas na base 2620 e três não têm identidade estrutural validada. Esses casos continuam neutros. O fundo original é preservado; texto branco/preto substitui apenas combinações de contraste insuficiente. Este leitor suporta o build 26.3.2 demonstrado; não lê a memória do jogo nem redistribui sua base.
+## Compatibility
 
-O botão de sol/lua à direita alterna o modo claro/escuro, também pelo atalho **⇧⌘L** (Ctrl+Shift+L fora do Mac). Até a primeira escolha manual, acompanha o tema do sistema e suas mudanças. Depois guarda a escolha; no app Mac ela permanece entre aberturas, mesmo com a porta local mudando. As bandeiras e as cores dos clubes/atributos permanecem iguais nos dois temas.
+| Component | Current scope |
+| --- | --- |
+| Application | macOS, AppKit + WebKit. No iOS target. |
+| macOS version | Bundle declares 13.0; the build uses the host compiler's default target. Older-version runtime validation is pending. |
+| Processor | Current native build assumes Apple Silicon Homebrew. Intel and universal builds are unverified. |
+| Football Manager | FM26 `.fm` saves; additional readers were checked against `26.3.2+2329565`. Coverage on other builds is unverified. |
+| Runtime | Python 3.12+ and `fmsave==0.5.10`; the native build bootstraps Python 3.12 at a fixed path. |
+| Interface language | Portuguese (Brazil). |
+| Distribution | Local developer build. No published standalone installer or notarized release. |
 
-O cabeçalho **Nac** usa bandeiras locais de 18×13px: até três nos jogadores, com a principal primeiro. Perfis mostram bandeira e nome de todas as nacionalidades lidas; staff e clubes exibem a principal. Os seletores de país também usam bandeiras. As 228 nacionalidades da lista FM estão cobertas, incluindo Inglaterra, Escócia, País de Gales e Irlanda do Norte. Os arquivos funcionam offline; fonte e condições em [web/flags/README.md](web/flags/README.md).
+Optional league/stadium names and club colors can use an existing local Steam installation of FM26. No game installation or complete game database is bundled. Matt Scout CSV/JSON exports are **not** FM `.fmf` shortlists.
 
-As colunas seguem a mesma ordem na tabela e no seletor. Jogadores: identificação, clube/equipe, capacidade/avaliação, mercado/contrato, características, reputação e atributos por categoria. Staff: identificação, cargo/clube, capacidade, contrato, gestão, treinamento, recrutamento, saúde e personalidade. Clubes: identidade/liga, reputação, elenco, finanças, estádio e cobertura das médias. Layouts existentes são reorganizados preservando as colunas selecionadas. Campos legados do staff ficam em um grupo próprio.
+## Getting started
 
-Carregar mais acrescenta linhas abaixo das já carregadas, mantendo os registros anteriores e a rolagem. Linhas por clique permite adicionar 50, 100 ou 200 de cada vez. Alterar filtros, ordenação ou colunas inicia uma nova listagem; mudar apenas a quantidade por clique conserva as linhas atuais. Ao terminar, o botão mostra Todos carregados.
-
-A comparação mostra no topo quantos atributos cada jogador venceu, além de empates e valores ausentes. Jogadores de linha e comparações mistas usam 36 atributos técnicos, mentais e físicos. A seção de goleiro e seus 11 atributos só aparecem e contam se ambos têm familiaridade GK ≥15, totalizando 47. O vencedor aparece em verde e texto; idade, CA/PA e soma não contam como atributos vencidos. Pesos iguais, sem ajuste por tática.
-
-Jogadores, staff e clubes usam o nome curto do clube nas listas, nos seletores e nos cabeçalhos dos perfis, por exemplo Corinthians. A busca aceita também o nome completo, que fica disponível nos detalhes e tooltips. Sem nome curto lido, usa o nome completo como alternativa.
-
-Todas as listas têm uma coluna Nº à esquerda, de acordo com os filtros e a ordenação atuais. Carregar mais continua a sequência; uma nova pesquisa reinicia em 1.
-
-Clubes femininos identificados por IDs de uma referência local são ocultados, incluindo seus jogadores e staff vinculados. Categoria desconhecida permanece visível. No COR foram identificados 1.017, preservando os masculinos homônimos. Sem elenco lido, a contagem mostra Nenhum jogador lido. A referência e sua cobertura parcial estão em `docs/CLUB_GENDERS.md`.
-
-Staff tem colunas Função, Área do staff e Soma de habilidades. O filtro de área permite busca e seleção múltipla nas listas médica, comissão técnica e recrutamento. 23 campos profissionais experimentais estão disponíveis no perfil, nas colunas, nos filtros e na comparação. Soma de 21 competências ativas, peso igual, máximo 420; dois campos antigos de goleiro ficam como legado, fora da soma e do placar; ausente se algum campo não foi lido. Cargos atuais são lidos pelo contrato do mesmo profissional e clube, com filtro pesquisável e seleção múltipla. Assentos identificam treinador principal e diretor de futebol; outros vínculos sem dados suficientes continuam como Cargo não identificado. Preferências e personalidade ficam fora da soma. Fontes/limites em `docs/STAFF_READER_RESEARCH.md`.
-
-Na pesquisa, Salvar filtro guarda os critérios atuais com um nome. Exportar filtros cria um JSON portátil; Importar filtros restaura esses critérios, incluindo clube, posição, elenco, idade, nacionalidade, competição, contrato, atributos e ordenação. Arquivos inválidos são rejeitados sem substituir os filtros existentes. IDs de competições que só existem naquela carreira podem não funcionar em outro save.
-
-## Médias dos clubes
-
-CA médio, PA médio e idade média são ordenáveis. “Equipe principal” usa jogadores no vínculo de equipe 0; “Todos os vinculados” inclui base e reservas. Cada média exclui somente os valores ausentes daquele indicador. Clubes sem jogadores/valores decodificados mostram “—”. O tooltip e o perfil do clube informam a cobertura. As médias de CA/PA e a classificação das equipes mantêm as limitações dos campos de origem.
-
-## Confiança nos dados
-
-O leitor considera `verified` os campos comparados com uma tela do jogo e `unconfirmed` aqueles sem essa confirmação. CA e PA são `unconfirmed` na versão utilizada. O aplicativo os extrai, testa estrutura e intervalos, mas ainda não os conferiu em uma referência independente do mesmo save. O símbolo † conserva essa ressalva.
-
-Notas percentuais são **estimativas Matt Scout**, com pesos e fórmula expostos no perfil. Não reproduzem a fórmula do Genie nem são probabilidades de desempenho. Jev/OpenJev foram discutidos; por decisão do usuário, a integração fica para depois.
-
-Valores monetários usam a moeda selecionada quando existe conversão conferida por carreira/moeda; sem referência, permanecem identificados como unidades do save. Valores totais não recebem o fator de período dos salários. Finanças têm cobertura parcial e uma data própria. Nacionalidades, países e regiões usam nomes em português, com busca e seleção múltipla. Países e movimentos sem nome identificado não são oferecidos como códigos para pesquisa. A liga atual é identificada pelo status do próprio clube, com nomes da instalação local do FM e filtro pesquisável. Tabelas de divisões nacionais servem como alternativa quando esse vínculo não é lido.
-
-Um arquivo opcional `competition-names.csv`, com `database_id,name`, pode fornecer nomes de competições para os dados internos do leitor. O vínculo atual vem do status do clube, separadamente dos nomes.
-
-## Listas, histórico e arquivos
-
-Os dados pessoais do aplicativo ficam em `~/Library/Application Support/FM Matt Scout/`:
-
-- `scout.sqlite3`: listas e snapshots de evolução, separados pelo caminho da carreira.
-- `filters.json`: filtros táticos nomeados, formato de exportação versão 1.
-- `layouts.json`: colunas de jogadores, staff e clubes.
-
-CSV exporta dados básicos da lista. JSON permite importar a lista de volta no Matt Scout; a correspondência exige ID do FM, nome e nascimento. **CSV e JSON não são shortlists `.fmf` e não são importáveis no FM26.** O formato nativo ainda está pendente.
-
-O histórico registra a primeira leitura de cada data no jogo e jogador naquele caminho. Não reconstrói períodos anteriores. Saves com outro caminho mantêm um histórico separado. Não há envio dos saves à nuvem.
-
-## Verificar
-
-O cartão do save, no rodapé da barra lateral, abre as opções de moeda (euro, real, libra ou dólar) e período (mensal, semanal ou anual). **Conferir conversão…** abre as referências do perfil selecionado. Euro e mensal são as preferências iniciais. A conversão exige um salário do FM na moeda/período escolhidos, a partir do perfil aberto; fica guardada por carreira e moeda. Até essa conferência, os números são explicitamente unidades do save por semana. Valores abreviados em M ou mil produzem uma conversão aproximada. Filtros de salário e orçamento salarial conservam os mesmos limites ao trocar a exibição, inclusive nos arquivos de filtros. Valor de mercado, cláusulas e saldo não recebem essa conversão salarial.
+This preview currently requires source access and a local Python environment. For the browser interface:
 
 ```sh
-.venv/bin/python -m unittest discover -s qa -p 'test_*.py' -v
-.venv/bin/python qa/check_save.py "/caminho/da/carreira.fm"
-SCOUT_QA_BROWSER='/Applications/Comet.app/Contents/MacOS/Comet' node qa/check_redesign.cjs
+git clone https://github.com/matheusabrantes/fm-matt-scout.git
+cd fm-matt-scout
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python server.py
 ```
 
-O teste de UI usa o Playwright e o Chromium já disponíveis no ambiente de desenvolvimento deste Mac; seus caminhos estão no script. A comparação dos bytes do save e as verificações da API usam somente a biblioteca padrão do Python. Consulte `docs/COVERAGE.md` para o escopo completo e as pendências.
+Open the complete loopback URL printed in the terminal, then choose your `.fm` save. Keep that access-token URL private. FM does not need to remain running.
 
-## Referências
+For the native app, read the [setup guide](docs/GETTING_STARTED.md#build-the-native-macos-app) before running `./build.command`: it replaces `/Applications/FM Matt Scout.app`, signs it ad hoc, and creates a ZIP. Both the app and ZIP depend on this checkout's `.venv` path. They are not portable installers.
 
-- [Genie Scout 26](https://www.fmscout.com/a-fm-genie-scout-26.html)
-- [Guia do Genie](https://www.fmscout.com/a-genie-scout-guide.html)
-- [Leitor fmsave e licença MIT](https://github.com/rhiever/fmsave)
-- [Critérios de confiança do leitor](https://rhiever.github.io/fmsave/guides/trust.html)
+The guide covers prerequisites, first use, local storage, checks, and troubleshooting. The [Portuguese usage guide](docs/USAGE.pt-BR.md) explains filters, currencies, comparison, and shortlists in detail.
 
-Projeto independente, sem vínculo com Sports Interactive, SEGA ou os autores do Genie Scout.
+## How it works
 
-Altura em centímetros tem coluna ordenável e filtros mínimo/máximo, também salvos nos filtros táticos. Peso em kg ainda sem leitura confiável. Clubes têm colunas de saldo, transferências restantes, orçamento salarial e capacidades de lugares sentados/expansão do estádio pelo vínculo atual do clube, com jogos em casa como alternativa. O nome do estádio pode ser adicionado como coluna e aparece no perfil. Ausência de dados permanece explícita.
+```mermaid
+flowchart LR
+    A[Your FM26 save] --> B[Temporary copy]
+    B --> C[fmsave + Matt Scout readers]
+    C --> D[In-memory records]
+    D --> E[Loopback JSON API]
+    E --> F[HTML / CSS / JavaScript]
+    F --> G[AppKit / WebKit window]
+    E <--> H[Local SQLite + JSON preferences]
+```
 
-Ligas: filtro, coluna e perfil pelo nome nas três listas, pelo vínculo atual do clube e nomes locais do FM. Ausência de vínculo/nome continua explícita como Liga não lida. Detalhes em `docs/LEAGUES.md`. Instalações de treino/formação ainda não têm decoder confiável: `docs/CLUB_FACILITIES_RESEARCH.md`.
+Python parses and enriches records, applies filters and sorting, and serves the UI on `127.0.0.1` behind a per-launch token. Swift provides the macOS window, native file dialogs, and clipboard bridge. Shortlists, player snapshots, layouts, and calibration stay in the local app-data directory. The inspected flow has no cloud upload.
 
-Na aba **Clubes**, caixa e orçamentos usam a posição atual quando o registro é reconhecido; o histórico mensal fica como alternativa com origem e data no perfil. A aba **Empréstimos** apresenta valores originais, parcelas, juros mensais e vencimentos dos vínculos lidos, convertidos pela moeda configurada. Esses valores não substituem a dívida líquida atual, cujo cálculo permanece não confirmado.
+## Development status
+
+The repository records local QA for the implemented flows. These results do not establish compatibility with every save, macOS version, or machine.
+
+| Area | Status and limits |
+| --- | --- |
+| Search, layouts, comparison, shortlists, themes | Implemented with local unit/UI QA. Browser integration scripts still assume the original developer environment. |
+| CA/PA and positional ratings | CA/PA remain `unconfirmed` in the pinned reader. Matt Scout ratings are estimates, not Genie Scout's formula or performance probabilities. |
+| Staff, contracts, leagues, club finances | Partial/experimental decoding; build-specific readers and missing fields are documented. Identified women's clubs are currently hidden by a reference-ID filter. |
+| Money and valuations | Per-career currency calibration; raw units when uncalibrated. Market and purchase estimates are experimental and do not guarantee accepted transfer fees. |
+| Not implemented | Native `.fmf` shortlist exchange, reliable current net club debt, training/youth-facility decoding, and a standalone distribution workflow. |
+
+See [coverage and limitations](docs/COVERAGE.md), [valuation research](docs/PLAYER_VALUES_RESEARCH.md), and [dated QA records](docs/QA.md).
+
+## Documentation
+
+- [Setup and development](docs/GETTING_STARTED.md): environment, native build, storage, checks, and troubleshooting.
+- [Usage guide (Português)](docs/USAGE.pt-BR.md): the current interface and detailed scouting workflows.
+- [Documentation index](docs/README.md): readers, calculations, data coverage, design, and research notes.
+- [Public release review](docs/PUBLIC_RELEASE.md) and [third-party material](docs/THIRD_PARTY.md): licensing, provenance, and recorded source-publication decisions.
+
+## Credits and disclaimer
+
+Save parsing uses [fmsave](https://github.com/rhiever/fmsave/tree/v0.5.10). FM Genie Scout is a functional inspiration; its branding, code, and proprietary assets are not part of this project's intended identity. Additional research and asset sources are listed in [Third-party material](docs/THIRD_PARTY.md).
+
+FM Matt Scout is independent and is not affiliated with or endorsed by Sports Interactive, SEGA, or the developers of FM Genie Scout. Football Manager and other referenced names belong to their respective owners.
+
+## License
+
+Original FM Matt Scout source code and documentation are licensed under the [MIT License](LICENSE). See [licensing scope](docs/LICENSING.md) and [third-party notices](docs/THIRD_PARTY.md) for material with separate rights. The Footyshoe reference is retained with attribution and an explicitly accepted residual risk; its redistribution permission remains unverified. See the [source-publication assessment](docs/PUBLIC_RELEASE.md).
