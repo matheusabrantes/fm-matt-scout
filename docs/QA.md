@@ -367,3 +367,38 @@ Corinthians e habilitou Adicionar à lista. Desmarcar Memphis reduziu o contador
 para 67; marcar e desmarcar pelo cabeçalho voltou de 68 a zero. Nenhuma adição
 foi executada na lista pessoal; seu conteúdo permaneceu igual ao snapshot.
 Fonte, recurso instalado e ZIP são idênticos; assinatura local conferida.
+
+## Redesenho aprovado, EU e copiar nome — 30/10/2026
+
+As referências foram implementadas no frontend de produção. Mapeamento, decisões,
+limites visuais, arquivos e evidências em docs/REDESIGN.md; tokens/razões em DESIGN.md.
+A suíte atual é qa/check_redesign.cjs, com dados COR reais e armazenamento isolado.
+Passou 18 fluxos, sem erros de JavaScript/console; incluiu Clipboard API nas três
+entidades, check temporário de 1,5s, filtros com rascunho/aplicar/cancelar, tabelas,
+painéis, listas, presets, importação/exportação e quatro larguras. A comparação
+visual usa o código/especificação do protótipo, cujo arquivo local foi bloqueado
+pela política do navegador; não se declara paridade pixel a pixel.
+
+112 testes Python e o JavaScript real passaram novamente. A ponte nativa nova
+restringe cópia ao frame principal e porta local atual, string não vazia e até
+1024 bytes. Swift compilado e assinatura local verificada.
+
+Na instalação AppKit/WebKit, após o proprietário aprovar o acesso a Documentos,
+o COR abriu: 63.514 jogadores, Meu time com 68 e coluna EU. Abrir Memphis mostrou
+o perfil com o botão de copiar; o clique mudou o nome acessível para Nome copiado,
+voltou a Copiar nome, e colar na busca produziu exatamente Memphis Depay, com
+um resultado. A busca foi limpa e o elenco voltou a 68. Não houve adição/remoção
+na lista pessoal durante essa conferência. O último ajuste de CSS remove a largura
+excedente da faixa de abas do inspector, mantendo o painel com 340px.
+
+A inicialização branca não foi atribuída ao layout: o processo Python aguardava
+acesso ao ambiente do projeto em Documentos. O proprietário mostrou o aviso de
+permissão e aprovou; nenhuma permissão geral do sistema foi alterada pelo agente.
+Logs de tentativas e amostra de processo foram preservados em /tmp.
+
+Em 31/10/2026, antes da publicação do redesign na PR #7, passaram novamente os
+112 testes Python, check_money_fields.cjs, sintaxe JavaScript, typecheck Swift,
+assinatura local e os 18 fluxos de check_redesign.cjs com zero erros de console/JS.
+Log desta repetição: /tmp/fm-redesign-qa-pr-20261031.log. A execução usou
+armazenamento temporário e preservou o piso de 20 GiB livres.
+Como a PR #7 foi mesclada antes do push, o redesign segue em PR complementar.

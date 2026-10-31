@@ -15,6 +15,7 @@ function element(key) {
   return elements.get(key);
 }
 const document = {
+  body:{classList:{add(){},remove(){}}},
   getElementById:element, addEventListener(){}, querySelectorAll(){return [];},
   querySelector(selector){return element(selector);},
 };
@@ -24,6 +25,19 @@ vm.runInNewContext(source + `
   assert(baseColumns.players.includes('model_fee'));
   assert(!baseColumns.players.includes('value'));
   columnGroups=columnGroupsFromServer;
+  assert(badge(null).includes('FM'));
+  assert.equal(columnLabel('eu_national'),'EU');
+  assert.equal(countryCodes['França'],'FR');assert.equal(new Intl.Locale('und-SU').region,'RU');
+  const copied=[];window.webkit={messageHandlers:{copyName:{postMessage:name=>copied.push(name)}}};
+  for(const type of ['players','staff','clubs']){kind=type;currentProfile={row:{name:'Nome completo',short_name:'Nome curto'}};copyProfileName();assert.equal(copied.at(-1),type==='clubs'?'Nome curto':'Nome completo');}
+  delete window.webkit;kind='players';currentProfile=null;
+  assert.equal(profileName({name:'Nome completo',short_name:'Nome curto'}),'Nome completo');
+  kind='clubs';assert.equal(profileName({name:'Nome completo',short_name:'Nome curto'}),'Nome curto');kind='players';
+  assert.equal(proficiency(0),'none');assert.equal(proficiency(1),'weak');assert.equal(proficiency(10),'weak');assert.equal(proficiency(11),'medium');assert.equal(proficiency(17),'medium');assert.equal(proficiency(18),'strong');
+  const map=positionMap({positions:{stc:20,amc:12,mc:7,dl:0}});
+  assert(map.includes('20/20 · Forte'));assert(map.includes('12/20 · Média'));assert(map.includes('7/20 · Fraca'));assert(!map.includes('14/20'));
+  assert.equal(heat(null),'—');assert(heat(20).includes('data-heat="20"'));
+  const styled={dataset:{heat:'20'},style:{}};applyDataStyles({querySelectorAll:s=>s==='[data-heat]'?[styled]:[]});assert.equal(styled.style.background,'oklch(0.850 0.190 132)');assert.equal(styled.style.color,'#101410');
   for(const list of ['players','staff','clubs']) {
     assert.deepEqual(baseColumns[list],orderedColumns(baseColumns[list],list));
     kind=list;visibleColumns[list]=[...baseColumns[list]].reverse();renderColumnOptions();
@@ -111,27 +125,29 @@ vm.runInNewContext(source + `
   assert($('profile').innerHTML.includes('preço efetivamente aceito depende da negociação'));
   assert($('profile').innerHTML.includes(moneyFormat(600)));
   kind='players';visibleColumns.players=['name','value','model_value','model_fee'];rows=[currentProfile.row];renderTable();
-  assert($('table').querySelector('tbody').innerHTML.includes('≈ '+moneyFormat(600)));
-  assert(!$('table').querySelector('tbody').innerHTML.includes('≈ '+moneyFormat(500)));
-  currentProfile.row.model_value_basis='model';renderTable();assert($('table').querySelector('tbody').innerHTML.includes('≈ '+moneyFormat(500)));
+  assert($('table').querySelector('tbody').innerHTML.includes('≈ '+compactMoney(600)));
+  assert(!$('table').querySelector('tbody').innerHTML.includes('≈ '+compactMoney(500)));
+  currentProfile.row.model_value_basis='model';renderTable();assert($('table').querySelector('tbody').innerHTML.includes('≈ '+compactMoney(500)));
   currentProfile.row.value=0;currentProfile.row.transfer_value=null;currentProfile.row.value_note='Valor zero gravado no save; não significa jogador sem contrato.';renderProfile();
   assert($('profile').innerHTML.includes(moneyFormat(0)));assert($('profile').innerHTML.includes('não significa jogador sem contrato'));
   for(const list of ['players','staff']) {
     kind=list;visibleColumns[list]=['name','club_name'];
     rows=[{uid:1,name:'Pessoa',club_name:'Sport Club Corinthians Paulista',club_short_name:'Corinthians'}];renderTable();
-    assert($('table').querySelector('tbody').innerHTML.includes('title="Sport Club Corinthians Paulista">Corinthians</td>'));
+    assert($('table').querySelector('tbody').innerHTML.includes('title="Sport Club Corinthians Paulista"'));
+    assert($('table').querySelector('tbody').innerHTML.includes('<span>Corinthians</span>'));
     currentProfile={row:rows[0],history:[],shortlisted:false};profileTab='transfer';renderProfile();
-    assert($('profile').innerHTML.includes('<p>Corinthians'));
+    assert($('profile').innerHTML.includes('title="Corinthians"'));
     delete rows[0].club_short_name;renderTable();
-    assert($('table').querySelector('tbody').innerHTML.includes('>Sport Club Corinthians Paulista</td>'));
+    assert($('table').querySelector('tbody').innerHTML.includes('<span>Sport Club Corinthians Paulista</span>'));
   }
   kind='clubs';visibleColumns.clubs=['name'];rows=[{uid:1,name:'Sport Club Corinthians Paulista',short_name:'Corinthians',nation_name:'Brasil'}];renderTable();
-  assert($('table').querySelector('tbody').innerHTML.includes('title="Sport Club Corinthians Paulista">Corinthians</button>'));
+  assert($('table').querySelector('tbody').innerHTML.includes('title="Sport Club Corinthians Paulista"'));
+  assert($('table').querySelector('tbody').innerHTML.includes(' Corinthians</button>'));
   currentProfile={row:rows[0],history:[],shortlisted:false};profileTab='attributes';renderProfile();
   assert($('profile').innerHTML.includes('<h2>Corinthians</h2>'));
   assert($('profile').innerHTML.includes('Nome completo'));
   delete rows[0].short_name;renderTable();
-  assert($('table').querySelector('tbody').innerHTML.includes('>Sport Club Corinthians Paulista</button>'));
+  assert($('table').querySelector('tbody').innerHTML.includes(' Sport Club Corinthians Paulista</button>'));
   salaryPrefs={currency:'USD',period:'month',rate:null,money_rate:null,money_source:null};
   assert(moneyFormat(500).includes('unid. do save'));
   assert(!moneyFormat(500).includes('$'));
