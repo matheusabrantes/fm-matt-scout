@@ -7,6 +7,7 @@ fi
 .venv/bin/python -m pip install -r requirements.txt
 app_dir="/Applications/FM Matt Scout.app"
 mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
+cp macos/AppIcon.icns "$app_dir/Contents/Resources/"
 xcrun swiftc macos/App.swift -O -framework AppKit -framework WebKit -o "$app_dir/Contents/MacOS/FMMattScout"
 cp scout.py server.py presets.py salaries.py staff_skills.py staff_roles.py contract_reader.py club_finances.py club_debt.py club_locations.py club_colors.py player_values.py value_model.py "$app_dir/Contents/Resources/"
 cp league-names.csv "$app_dir/Contents/Resources/"
@@ -21,6 +22,7 @@ from pathlib import Path
 app, python = sys.argv[1:]
 info = {'CFBundleExecutable':'FMMattScout','CFBundleIdentifier':'br.com.matt.fm-scout',
         'CFBundleName':'FM Matt Scout','CFBundleDisplayName':'FM Matt Scout 26',
+        'CFBundleIconFile':'AppIcon',
         'CFBundlePackageType':'APPL','CFBundleShortVersionString':'0.1.0',
         'CFBundleVersion':'1','LSMinimumSystemVersion':'13.0',
         'NSHighResolutionCapable':True,'MattScoutPython':python}
