@@ -35,6 +35,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         controller.add(self, name: "openSave")
         controller.add(self, name: "saveFile")
         controller.add(self, name: "copyName")
+        controller.add(self, name: "themePreference")
+        if let theme = UserDefaults.standard.string(forKey: "fmscout.theme"), ["light", "dark"].contains(theme) {
+            NSApp.appearance = NSAppearance(named: theme == "dark" ? .darkAqua : .aqua)
+            let seed = "if(location.hostname==='127.0.0.1')window.fmscoutNativeTheme='\(theme)';"
+            controller.addUserScript(WKUserScript(source: seed, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
         let config = WKWebViewConfiguration()
         config.userContentController = controller
         web = WKWebView(frame: .zero, configuration: config)
@@ -114,6 +120,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.frameInfo.isMainFrame, message.frameInfo.securityOrigin.host == "127.0.0.1" else { return }
         if message.name == "openSave" { openSave(); return }
+        if message.name == "themePreference", message.frameInfo.request.url?.port == web.url?.port,
+           let theme = message.body as? String, ["light", "dark"].contains(theme) {
+            UserDefaults.standard.set(theme, forKey: "fmscout.theme")
+            NSApp.appearance = NSAppearance(named: theme == "dark" ? .darkAqua : .aqua)
+            return
+        }
         if message.name == "copyName", message.frameInfo.request.url?.port == web.url?.port,
            let name = message.body as? String, !name.isEmpty, name.utf8.count <= 1024 {
             NSPasteboard.general.clearContents()

@@ -8,7 +8,7 @@ const columnGroupsFromServer=JSON.parse(execFileSync(path.join(__dirname,'../.ve
 const elements = new Map();
 function element(key) {
   if (!elements.has(key)) elements.set(key, {
-    value:'', disabled:false, type:'number', textContent:'', innerHTML:'',
+    value:'', disabled:false, type:'number', textContent:'', innerHTML:'', style:{},
     addEventListener(){}, setAttribute(){}, insertAdjacentHTML(){},
     querySelector(selector){return element(key+' '+selector);}, querySelectorAll(selector){return selector==='input'?[element(key+' min'),element(key+' max')]:[];},
   });
@@ -19,15 +19,25 @@ const document = {
   getElementById:element, addEventListener(){}, querySelectorAll(){return [];},
   querySelector(selector){return element(selector);},
 };
-const source = fs.readFileSync(path.join(__dirname,'../web/app.js'),'utf8').replace('action(init)();','');
+const source = fs.readFileSync(path.join(__dirname,'../web/flags.js'),'utf8')+'\n'+fs.readFileSync(path.join(__dirname,'../web/app.js'),'utf8').replace('action(init)();','');
 vm.runInNewContext(source + `
   assert(baseColumns.players.includes('model_value'));
   assert(baseColumns.players.includes('model_fee'));
   assert(!baseColumns.players.includes('value'));
   columnGroups=columnGroupsFromServer;
   assert(badge(null).includes('FM'));
+  assert(badge('FC Bayern München').includes('FCB'));
+  assert(badge('Manchester City').includes('MCI'));
+  assert(!badge('Clube sem paleta').includes('data-club'));
+  assert.equal(compactContract('2027-06-30'),'JUN 27');assert.equal(compactContract('2030-12-31'),'DEZ 30');assert.equal(compactContract(null),'—');
+  for(let month=1;month<=12;month++)assert.equal(compactContract('2028-'+String(month).padStart(2,'0')+'-01'),contractMonths[month-1]+' 28');
+  const colored={dataset:{clubBg:'#1E2021',clubFg:'#FFE252'},style:{}};applyDataStyles({querySelectorAll:s=>s==='[data-club-bg][data-club-fg]'?[colored]:[]});assert.equal(colored.style.background,'#1E2021');assert.equal(colored.style.color,'#FFE252');
+  assert.equal(clubPalette({club_background:'#FFFFFF',club_foreground:'#FAFAFA'})[1],'#000000');
+  assert.equal(clubPalette({club_background:'#111111',club_foreground:'#111111'})[1],'#FFFFFF');
+  assert.equal(clubPalette({club_background:'red',club_foreground:'#FFFFFF'}),null);
   assert.equal(columnLabel('eu_national'),'EU');
-  assert.equal(countryCodes['França'],'FR');assert.equal(new Intl.Locale('und-SU').region,'RU');
+  assert.equal(countryCodes['França'],'fr');assert.equal(countryCodes['Inglaterra'],'gb-eng');
+  assert(countryFlag('Inglaterra').includes('flags/gb-eng.png'));assert.equal(countryFlag('__proto__'),'');
   const copied=[];window.webkit={messageHandlers:{copyName:{postMessage:name=>copied.push(name)}}};
   for(const type of ['players','staff','clubs']){kind=type;currentProfile={row:{name:'Nome completo',short_name:'Nome curto'}};copyProfileName();assert.equal(copied.at(-1),type==='clubs'?'Nome curto':'Nome completo');}
   delete window.webkit;kind='players';currentProfile=null;

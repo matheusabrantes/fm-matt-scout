@@ -402,3 +402,70 @@ assinatura local e os 18 fluxos de check_redesign.cjs com zero erros de console/
 Log desta repetição: /tmp/fm-redesign-qa-pr-20261031.log. A execução usou
 armazenamento temporário e preservou o piso de 20 GiB livres.
 Como a PR #7 foi mesclada antes do push, o redesign segue em PR complementar.
+
+## Colunas, temas, bandeiras e cores dos clubes: 31/10/2026
+
+O COR real reproduziu a regressão do contador: três jogadores salvos viravam
+zero ao abrir Staff. O menu agora recebe a quantidade de jogadores no status
+inicial e a conserva em Staff/Clubes; sem carreira aberta, fica vazio.
+Evidências RED/GREEN: `/tmp/fm-matt-table-20261031-red` e
+`/tmp/fm-matt-table-20261031-green`.
+
+Alças ajustam a largura sem ordenar: setas de 10px, Shift de 50px, limites de
+40–1000px e dois cliques para restaurar. Larguras persistem por tabela, também
+para colunas ocultas. A API rejeita valores inválidos sem alterar o arquivo e
+preserva larguras enviadas por clientes anteriores. Alças usam #E5E5EA normal,
+#C7C7CC no hover/arraste e azul só no foco de teclado, conforme pedido.
+Contratos usam JUN 27, com data completa no tooltip e ordenação cronológica.
+Busca padrão de 300px conferida nas três entidades, sem cortar o placeholder.
+
+O tema segue mudanças do sistema até a primeira escolha manual. Clique e
+⇧⌘L/Ctrl+Shift+L alternam imediatamente, sem transição global de cores.
+`fmscout.theme` persiste em localStorage; o app Mac espelha a escolha em
+UserDefaults porque sua porta local muda. A ponte aceita apenas light/dark
+do frame principal na porta atual. No WebKit nativo, o clique mudou claro→
+escuro; fechar e reabrir preservou escuro em outra porta. O atalho voltou ao
+claro. O botão está disponível mesmo sem carreira aberta.
+
+As bandeiras são assets locais, com geometria 18×13/16×12/14×10 por contexto,
+cantos de 2px e contorno de 0,5px. Nac mostra três bandeiras de jogadores e uma
+de staff; perfis mostram as nacionalidades e os seletores usam os mesmos
+assets. `check_flags.cjs` conferiu as 228 nacionalidades da lista FM e carregou
+os 256 arquivos em oito rodadas, sem erros. Um teste anterior reproduziu
+conexões recusadas ao carregar vários assets; a fila do servidor local foi
+aumentada de 5 para 64. Regras de nacionalidade/UE existentes foram preservadas.
+
+Paletas da base instalada substituem as 12 cores fixas do protótipo. No COR,
+31.653/32.867 clubes têm cores válidas: 1.211 têm ARGB zerado e três não têm
+identidade confirmada. Não se infere cor dos uniformes. Controles, associação,
+limites e suporte de build estão em [CLUB_COLORS.md](CLUB_COLORS.md).
+
+Validação final: 118 testes Python, `check_money_fields.cjs`, `check_theme.cjs`,
+`check_flags.cjs`, sintaxe JavaScript e `git diff --check` passaram. Os 23 fluxos
+de `check_redesign.cjs` passaram em armazenamento isolado, sem erros de console
+ou JavaScript. Incluíram os dois temas, persistência, alças, contador, dados
+reais, filtros, listas, perfis, importação/exportação, quatro larguras normais
+e inspector em 1440/1100/1024/1000/850/390, sem overflow global ou colisões da
+toolbar. Log e capturas: `/tmp/fm-matt-theme-flags-20261031-07` e arquivo `.log`
+de mesmo nome. Capturas claras/escuras foram inspecionadas.
+
+Gate das alterações: comportamento, teclado e estados exercitados; Purpose
+e Liveliness preservam a direção de DESIGN.md (ENERGY 1 / RHYTHM 1 / MOTION 2).
+Craftsmanship conferido nas suítes, dados reais e distribuição local. As cores
+dos badges usam contraste mínimo de 4,5:1. Os tokens exatos de placeholder
+pedidos têm 1,96:1 no claro e 2,66:1 no escuro; não se declara conformidade AA
+global da paleta fornecida. As divisórias suaves também seguem o pedido visual.
+
+Swift compilado, app instalado e assinatura local verificada. Os 267 recursos
+alterados/atuais do frontend e leitor são idênticos entre fonte, bundle e ZIP.
+A atualização reutilizou as dependências existentes; o pip da tentativa inicial
+foi interrompido enquanto aguardava leitura (amostra preservada no GREEN).
+Nenhuma dependência foi adicionada.
+
+Na instalação atualizada, o COR abriu com 63.514 jogadores e Minha lista 3,
+sem clicar na lista. Staff e Clubes conservaram 3. Nac mostrou as três
+bandeiras de Messi e as bandeiras britânicas corretas; o perfil exibiu os três
+pares bandeira/nome. Cores do jogo apareceram também em Santos, Napoli e
+outros clubes fora do protótipo, nos dois temas. O app foi deixado em Jogadores
+no tema claro. Os três JSONs pessoais permaneceram idênticos por SHA-256 e a
+consulta SQLite somente leitura confirmou os mesmos três jogadores salvos.

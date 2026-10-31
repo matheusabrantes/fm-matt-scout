@@ -16,6 +16,7 @@ import fmsave
 from club_debt import read_current_club_debts
 from club_finances import read_current_club_finances
 from club_locations import read_current_club_links, read_installed_names, stadium_reference_fields
+from club_colors import read_current_club_colors
 from fmsave.readers.competitions import find_competition_id_pair_layout, locate_competition_database_ids
 from contract_reader import RELEASE_KINDS, contract_state, listing_status
 from player_values import market_value_fields
@@ -470,6 +471,15 @@ class Scout:
                     club['club_nation_id'] = club['nation_id']
                 club_squads(clubs, players)
                 club_index = {c['uid']: c for c in clubs}
+                try:
+                    with save._context.section('game_db') as game_db:
+                        colors = read_current_club_colors(
+                            game_db, save._context.own_club_record_spans(), save.info.build,
+                            save.info.section_schemas.get('game_db'), save.info.db_version)
+                    for club in clubs:
+                        club.update(colors.get(club['uid'], {}))
+                except (fmsave.FmsaveError, OSError, ValueError) as exc:
+                    notes.append(f'Cores dos clubes indisponíveis: {exc}')
                 for member in staff:
                     club = club_index.get(member['club_uid'])
                     member['club_short_name'] = club.get('short_name') if club else None
@@ -534,6 +544,8 @@ class Scout:
                     club = club_index.get(row.get('club_uid'), {})
                     row['league_key'] = club.get('league_key')
                     row['league_name'] = club.get('league_name')
+                    for field in ('club_background', 'club_foreground', 'club_colors_source'):
+                        row[field] = club.get(field)
                 for row in players + staff + clubs:
                     nationality_fields(row)
                     row['club_nation_name'] = NATION_NAMES.get(row.get('club_nation_id'))
@@ -544,6 +556,10 @@ class Scout:
                 except (fmsave.FmsaveError, ValueError) as exc:
                     managed = []
                     notes.append(f'Time do treinador não identificado: {exc}')
+                for team in managed:
+                    club = club_index.get(team['club_uid'], {})
+                    for field in ('club_background', 'club_foreground', 'club_colors_source'):
+                        team[field] = club.get(field)
                 buyer = club_index.get(managed[0]['club_uid'], {}) if len(managed) == 1 else {}
                 enrich_estimates(players, str(save.info.game_date), buyer.get('reputation'))
                 meta = {'file': source.name, 'path': str(source), 'date': str(save.info.game_date),
@@ -553,6 +569,7 @@ class Scout:
                         'listing_status_count': sum(type(p.get('transfer_listed')) is bool
                                                     and type(p.get('loan_listed')) is bool for p in players),
                         'league_clubs_count': sum(c.get('league_key') is not None for c in clubs),
+                        'club_colors_count': sum(bool(c.get('club_background')) for c in clubs),
                         'staff_roles_count': sum(s.get('staff_role_key') != 'unknown' for s in staff),
                         'staff_skills_count': sum(s.get('attribute_sum') is not None for s in staff),
                         'warnings': notes + [str(w.message) for w in captured],

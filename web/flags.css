@@ -1,0 +1,39 @@
+.fm-flags {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  vertical-align: middle;
+}
+img.fm-flag {
+  display: inline-block;
+  flex: none;
+  width: 18px;
+  height: 13px;
+  margin: 0;
+  border-radius: 2px;
+  object-fit: cover;
+  object-position: center;
+  box-shadow: 0 0 0 .5px rgba(0,0,0,.2);
+  vertical-align: middle;
+  filter: none;
+}
+img.fm-flag--profile { width: 16px; height: 12px; }
+img.fm-flag--token { width: 14px; height: 10px; }
+.fm-nationalities {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.fm-nationality {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--c-text-2);
+  font-size: 12px;
+}
+#table td.nationality-cell { padding-left: 2px; padding-right: 2px; }
+.fm-country-chips { display:flex; flex-wrap:wrap; gap:4px; padding:3px 0; }
+.fm-country-chip { display:inline-flex; align-items:center; gap:4px; min-height:22px; padding:0 5px; border-radius:5px; background:var(--c-window); }
+.picker-button:has(.fm-country-chips) { white-space:normal; height:auto; min-height:30px; }
+.fm-nationality--club { color: var(--c-text-3); }

@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>FM Matt Scout 26</title>
   <link rel="icon" href="data:,">
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="flags.css">
+  <script src="flags.js" defer></script>
   <script src="app.js" type="module"></script>
 </head>
 <body>
@@ -17,7 +21,7 @@
       <button data-view="staff"><span data-icon="staff"></span>Staff <span data-count="staff"></span></button>
       <button data-view="clubs"><span data-icon="club"></span>Clubes <span data-count="clubs"></span></button>
       <h2>Scouting</h2>
-      <button data-view="shortlist"><span data-icon="star"></span>Minha lista <span id="shortlist-count">0</span></button>
+      <button data-view="shortlist"><span data-icon="star"></span>Minha lista <span id="shortlist-count"></span></button>
       <button data-view="squad"><span data-icon="home"></span>Meu time <span id="squad-count"></span></button>
       <h2>Pesquisas salvas</h2><div id="saved-searches"></div>
     </nav>
@@ -27,6 +31,7 @@
   <header class="titlebar">
     <div class="toolbar-heading"><strong id="list-title">FM Matt Scout 26</strong><small id="result-count">Nenhum save aberto</small></div>
     <div id="toolbar-actions" hidden><label class="search-field"><span data-icon="search"></span><input id="search" type="search" aria-label="Pesquisar" placeholder="Buscar jogador, clube ou país" autocomplete="off"><kbd>⌘F</kbd></label><button id="advanced-button" aria-expanded="false" aria-controls="advanced"><span data-icon="filter"></span>Filtros <span id="filter-count" hidden></span></button><button id="columns"><span data-icon="columns"></span>Colunas</button><button id="list-import" title="Importar lista" aria-label="Importar lista"><span data-icon="import"></span></button><button id="export" title="Exportar lista" aria-label="Exportar lista" disabled><span data-icon="export"></span></button></div>
+    <div class="theme-control"><span class="toolbar-divider" aria-hidden="true"></span><button id="theme-toggle" title="Modo escuro (⇧⌘L)" aria-label="Modo escuro (⇧⌘L)" aria-pressed="false"></button></div>
   </header>
   <section id="filters" class="legacy-controls" aria-label="Filtros" hidden>
     <label>Posições<input id="position" type="hidden"><button id="quick-position">Todas as posições</button></label>
