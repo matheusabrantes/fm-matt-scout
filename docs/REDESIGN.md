@@ -104,3 +104,6 @@ o typecheck Swift, a assinatura local e os 18 fluxos integrados passaram novamen
 antes do commit. Log: /tmp/fm-redesign-qa-pr-20261031.log. Merge permanece pendente.
 A assinatura local pode provocar nova solicitação de Documentos após atualizações;
 o diálogo é gerenciado pelo macOS e a aprovação é feita pelo proprietário.
+
+A PR #7 foi mesclada antes do push do redesign. Por isso, estas mudanças seguem
+em uma PR complementar para main, sem repetir as alterações já mescladas.

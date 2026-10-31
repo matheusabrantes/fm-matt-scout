@@ -401,3 +401,4 @@ Em 31/10/2026, antes da publicação do redesign na PR #7, passaram novamente os
 assinatura local e os 18 fluxos de check_redesign.cjs com zero erros de console/JS.
 Log desta repetição: /tmp/fm-redesign-qa-pr-20261031.log. A execução usou
 armazenamento temporário e preservou o piso de 20 GiB livres.
+Como a PR #7 foi mesclada antes do push, o redesign segue em PR complementar.
