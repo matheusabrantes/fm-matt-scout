@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     var quitting = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.applicationIconImage = NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
         let appMenu = NSMenu()
         let root = NSMenuItem()
         appMenu.addItem(root)
