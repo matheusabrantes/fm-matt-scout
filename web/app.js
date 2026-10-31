@@ -2,9 +2,13 @@ const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num = value => value == null ? '—' : Number(value).toLocaleString('pt-BR');
 const fmtDate = value => value ? new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR') : 'Não disponível';
+const contractMonths = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+function compactContract(value) { return value ? `${contractMonths[Number(value.slice(5,7))-1]} ${value.slice(2,4)}` : '—'; }
 const fieldIds = ['search','position','age_min','age_max','ca_min','pa_min','sum_min','club','nation','league','contract_before','rating_min','free','squad_scope','squad','availability'];
 const baseColumns = {players:['name','age','positions','nation_id','club_name','ca','pa','attribute_sum','model_value','model_fee','contract_end'],staff:['name','age','nation_id','staff_role','staff_area','club_name','ca','pa','attribute_sum','attr_technical','attr_tactical','attr_judging_player_ability','attr_judging_player_potential','attr_physiotherapy'],clubs:['name','nation_id','league_name','reputation','player_count','ca_mean','pa_mean','age_mean','transfer_budget_remaining','stadium_seated_capacity']};
 let columnGroups = {}, visibleColumns = structuredClone(baseColumns), searchTab = 'general';
+let columnWidths = {players:{},staff:{},clubs:{}}, widthSaveTimer;
+const defaultWidths={name:190,age:54,positions:112,nation_id:64,eu_national:70,club_name:150,team_slot:95,league_name:170,ca:54,pa:54,rating:62,attribute_sum:64,ability_difference:68,height_cm:60,staff_role:175,staff_area:140,reputation:90,player_count:95,ca_mean:74,pa_mean:74,age_mean:68,stadium_name:170};
 const rangeLabels = {height_cm:'Altura (cm) †',stadium_seated_capacity:'Estádio: lugares sentados',stadium_expansion_capacity:'Estádio: capacidade de expansão',age:'Idade',ca:'Capacidade atual (CA) †',pa:'Potencial (PA) †',ability_difference:'Diferença PA − CA †',sum:'Soma dos atributos (36)',rating:'Nota atual (estimativa)',rep_home:'Reputação nacional',rep_current:'Reputação atual',rep_world:'Reputação mundial',club_reputation:'Reputação do clube',reputation:'Reputação do clube',model_value:'Valor de mercado · unidade do save',model_fee:'Compra estimada · unidade do save',value:'Valor lido do save · unidade do save',wage:'Salário · unidade do save †',release_fee:'Rescisão geral ou do tipo selecionado · unidade do save',balance:'Saldo · unidade do save',transfer_budget_remaining:'Orçamento de transferências · unidade do save',wage_budget_weekly:'Orçamento salarial · unidade do save'};
 const rangeMax = {height_cm:255,stadium_seated_capacity:1000000,stadium_expansion_capacity:1000000,age:100,ca:200,pa:200,ability_difference:200,sum:720,rating:100,rep_home:10000,rep_current:10000,rep_world:10000,club_reputation:10000,reputation:10000,model_value:1e12,model_fee:1e12,value:1e12,wage:1e12,release_fee:1e12,balance:1e12,transfer_budget_remaining:1e12,wage_budget_weekly:1e12};
 const titles = {players:'Jogadores',staff:'Staff',clubs:'Clubes',shortlist:'Minha lista',squad:'Meu time'};
@@ -40,16 +44,31 @@ async function copyProfileName() {
 const positionXY={STC:[50,11],AML:[17,26],AMR:[83,26],AMC:[50,30],ML:[15,44],MC:[50,45],MR:[85,44],WBL:[12,57],WBR:[88,57],DM:[50,60],DL:[15,72],DR:[85,72],DC:[50,74],SW:[50,82],GK:[50,91]};
 function positionGroup(p) { return p==='GK'?'gk':['DC','DL','DR','WBL','WBR','SW'].includes(p)?'def':['DM','MC','ML','MR'].includes(p)?'mid':'att'; }
 function positionChips(list=[]) { return `<span class="position-chips">${list.map(p=>`<span class="position-chip ${positionGroup(p)}">${esc(p)}</span>`).join('')}</span>`; }
-function badge(name='') { return `<span class="club-badge" aria-hidden="true">${esc(String(name||'').trim().slice(0,3).toUpperCase()||'FM')}</span>`; }
-const countryCodes={};
-const countryNames=new Intl.DisplayNames(['pt-BR'],{type:'region'});
-for(let a=65;a<=90;a++)for(let b=65;b<=90;b++){const code=String.fromCharCode(a,b),name=countryNames.of(code);if(name!==code&&new Intl.Locale('und-'+code).region===code)countryCodes[name]=code;}
-function countryFlag(name) { const code=countryCodes[name];return code?`<span class="country-flag" title="${esc(name)}" role="img" aria-label="${esc(name)}">${[...code].map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join('')}</span>`:''; }
+const clubAbbreviations = {'Inter Miami':'MIA','Real Madrid':'RMA','Man City':'MCI','Al-Nassr':'NSR','Barcelona':'BAR','Bayern München':'FCB','Napoli':'NAP','Arsenal':'ARS','Liverpool':'LIV','Chelsea':'CHE','Man United':'MUN','Corinthians':'COR'};
+const clubAliases = {'Manchester City':'Man City','Manchester United':'Man United','Man Utd':'Man United','FC Bayern München':'Bayern München','Bayern Munich':'Bayern München','FC Barcelona':'Barcelona','Inter Miami CF':'Inter Miami'};
+function clubPalette(row={}) {
+  const bg=row.club_background,fg=row.club_foreground;
+  if(!/^#[0-9a-f]{6}$/i.test(bg)||!/^#[0-9a-f]{6}$/i.test(fg))return null;
+  const luminance=color=>color.slice(1).match(/../g).map(c=>parseInt(c,16)/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4).reduce((sum,c,i)=>sum+c*[.2126,.7152,.0722][i],0);
+  const contrast=(a,b)=>(Math.max(a,b)+.05)/(Math.min(a,b)+.05),light=luminance(bg);
+  return [bg,contrast(light,luminance(fg))>=4.5?fg:contrast(light,1)>=contrast(light,0)?'#FFFFFF':'#000000'];
+}
+function badge(name='', row={}) {
+  const club=clubAliases[name]||name,palette=clubPalette(row);
+  return `<span class="club-badge" ${palette?`data-club-bg="${palette[0]}" data-club-fg="${palette[1]}"`:''} aria-hidden="true">${esc(clubAbbreviations[club]||String(name||'').trim().slice(0,3).toUpperCase()||'FM')}</span>`;
+}
+const countryCodes=window.fmScoutFlags.codes;
+function countryFlag(name, context='table') { return window.fmScoutFlags.html(name,context); }
+function nationalityHeader(row) {
+  const nations=row.nationalities?.length?row.nationalities:[{name:row.nation_name}];
+  return `<div class="fm-nationalities">${(kind==='players'?nations:nations.slice(0,1)).map(n=>`<span class="fm-nationality ${kind==='clubs'?'fm-nationality--club':''}" title="${esc((n.id===row.nation_id?'Nacionalidade principal':'Nacionalidade adicional')+(n.is_eu?' · UE':''))}">${countryFlag(n.name,'profile')}<span>${esc(n.name||'Nome indisponível')}${kind==='clubs'&&row.league_name?' · '+esc(row.league_name):''}</span></span>`).join('')}</div>`;
+}
 function heat(value) {
   if(!Number.isFinite(value)||value<1||value>20)return '—';
   return `<span class="heat-cell" data-heat="${value}">${value}</span>`;
 }
 function applyDataStyles(container) {
+  container.querySelectorAll('[data-club-bg][data-club-fg]').forEach(node=>{node.style.background=node.dataset.clubBg;node.style.color=node.dataset.clubFg;});
   container.querySelectorAll('[data-heat]').forEach(node=>{const v=Number(node.dataset.heat);if(v<1||v>20)return;const t=(v-1)/19;node.style.background=`oklch(${(.25+.6*t).toFixed(3)} ${(.03+.16*t).toFixed(3)} 132)`;node.style.color=t>.55?'#101410':'#D9DDD6';});
   container.querySelectorAll('[data-width]').forEach(node=>{const v=Number(node.dataset.width);if(Number.isFinite(v))node.style.width=`${Math.max(0,Math.min(100,v))}%`;});
   container.querySelectorAll('[data-x][data-y]').forEach(node=>{node.style.left=`${Number(node.dataset.x)}%`;node.style.top=`${Number(node.dataset.y)}%`;});
@@ -86,6 +105,9 @@ function renderShell() {
   document.querySelectorAll('[data-count]').forEach(node=>node.textContent=meta?num(meta.counts[node.dataset.count]):'');
   $('squad-count').textContent=meta?.managed?.[0]?.player_count?num(meta.managed[0].player_count):'';
   $('save-badge').textContent=(meta?.managed?.[0]?.club_short_name||'FM').slice(0,3).toUpperCase();
+  const palette=clubPalette(meta?.managed?.[0]);
+  $('save-badge').style.background=palette?.[0]||'';$('save-badge').style.color=palette?.[1]||'';
+  if(!meta)$('shortlist-count').textContent='';
   $('save-date').textContent=meta?`${fmtDate(meta.date)} · ${salaryPrefs.currency}/${salaryPeriods[salaryPrefs.period].label}`:'Abrir save…';
   const tokens=Object.entries(values()).filter(([key,v])=>v&&!['sort','direction','search','availability'].includes(key)&&!(key==='squad'&&v==='all')&&!(key==='squad_scope'&&v==='first')&&!(view==='squad'&&key==='club'));
   $('active-filters').innerHTML=tokens.map(([key,v])=>{let label=key.startsWith('attr_')||key.startsWith('maxattr_')?`${attributeLabel(key.replace(/^(max)?attr_/,''))} ${key.startsWith('max')?'≤':'≥'} ${v}`:pickers[key]?`${pickerNames[key]}: ${String(v).split(',').map(value=>pickers[key].options.find(o=>o.value===value)?.label||'Não disponível').slice(0,2).join(', ')}${String(v).split(',').length>2?'…':''}`:key==='position'?`Posição: ${v}`:key==='within_shortlist'?'Na minha lista':key==='eu_national'?`UE: ${v==='yes'?'Sim':'Não'}`:`${rangeLabels[key.replace(/_(min|max)$/,'')]||key}: ${v}`;return `<span class="filter-token"><button data-open-filters title="Editar filtro">${esc(label)}</button><button data-remove-filter="${esc(key)}" aria-label="Remover ${esc(label)}">×</button></span>`;}).join('');
@@ -209,7 +231,7 @@ async function refreshRows(reset = true) {
   $('workspace').setAttribute('aria-busy','false');
   const scroll=document.querySelector('.table-scroll'), scrollTop=scroll.scrollTop;
   rows = append?[...rows,...data.rows]:data.rows; total = data.total;
-  $('shortlist-count').textContent = data.shortlist_count;
+  if(kind==='players')$('shortlist-count').textContent = num(data.shortlist_count);
   renderListStatus();
   $('export').disabled = !data.shortlist_count || kind === 'clubs';
   renderTable();
@@ -233,6 +255,22 @@ function renderColumnOptions() {
   if(other.length)sections['Outras colunas salvas']=other;
   $('column-options').innerHTML=`<div class="column-sections">${Object.entries(sections).map(([group,keys])=>`<section class="column-section"><h3>${esc(group)}</h3>${keys.map(key=>`<label class="checkbox-label"><input data-column="${key}" type="checkbox" ${visibleColumns[kind].includes(key)?'checked':''} ${key==='name'?'disabled':''}>${esc(columnLabel(key))}</label>`).join('')}</section>`).join('')}</div>${kind==='players'?'<div class="column-presets"><span>Atributos</span>'+['Ataque','Criação','Defesa','Físico','Limpar'].map(label=>`<button data-column-preset="${label}">${label}</button>`).join('')+'</div>':''}`;
 }
+function columnWidth(key, pairedAbility=false) {
+  return columnWidths[kind][key] ?? (key==='ca'&&pairedAbility?128:key==='nation_id'&&kind==='clubs'?140:key.startsWith('attr_')?46:defaultWidths[key]||(moneyColumns.includes(key)?110:90));
+}
+function sizeTable() {
+  $('table').style.width=`${[...$('table').querySelectorAll('thead th')].reduce((total,th)=>total+parseFloat(th.style.width),0)}px`;
+}
+function resizeColumn(handle, width) {
+  const th=handle.closest('th');
+  width=Math.max(40,Math.min(1000,Math.round(width)));
+  columnWidths[kind][th.dataset.columnKey]=width;
+  th.style.width=`${width}px`;handle.setAttribute('aria-valuenow',width);sizeTable();
+}
+function saveColumnWidths() {
+  clearTimeout(widthSaveTimer);
+  widthSaveTimer=setTimeout(action(()=>api('layouts',{...visibleColumns,_widths:columnWidths})),200);
+}
 function renderTable() {
   let columns = [...visibleColumns[kind]];
   if (kind === 'players' && $('position').value.split(',').includes('GK') && !columns.includes('goalkeeping_sum')) columns.push('goalkeeping_sum');
@@ -243,14 +281,15 @@ function renderTable() {
   const header=key=>{
     const textKeys=['name','club_name','positions','stadium_name','league_name','nation_id','eu_national','staff_role','staff_area','team_slot'];
     const sorted=key===sort||(key==='ca'&&pairedAbility&&sort==='pa');
-    const button=k=>`<button data-sort="${k}" title="Ordenar por ${esc(columnLabel(k))}">${pairedAbility&&key==='ca'?k.toUpperCase():esc(columnLabel(k))}${k===sort?(direction==='desc'?' ↓':' ↑'):''}</button>`;
-    return `<th scope="col" class="${key==='attribute_sum'?'sum':textKeys.includes(key)?'':'numeric'}" ${sorted?`aria-sort="${direction==='desc'?'descending':'ascending'}"`:''}>${key==='positions'?'Posição':key==='ca'&&pairedAbility?`<span class="ability-heading">${button('ca')}<span>/</span>${button('pa')}</span>`:button(key)}</th>`;
+    const button=k=>`<button data-sort="${k}" title="Ordenar por ${esc(columnLabel(k))}">${pairedAbility&&key==='ca'?k.toUpperCase():k==='nation_id'&&kind!=='clubs'?'Nac':esc(columnLabel(k))}${k===sort?(direction==='desc'?' ↓':' ↑'):''}</button>`;
+    const resize=`<span class="column-resize" role="separator" tabindex="0" aria-label="Largura de ${esc(columnLabel(key))}" aria-orientation="vertical" aria-valuemin="40" aria-valuemax="1000" aria-valuenow="${columnWidth(key,pairedAbility)}" title="Arraste para ajustar a largura. Use ← e → no teclado; dois cliques para restaurar."></span>`;
+    return `<th scope="col" data-column-key="${key}" class="${key==='attribute_sum'?'sum':textKeys.includes(key)?'':'numeric'}" ${sorted?`aria-sort="${direction==='desc'?'descending':'ascending'}"`:''}>${key==='positions'?'Posição':key==='ca'&&pairedAbility?`<span class="ability-heading">${button('ca')}<span>/</span>${button('pa')}</span>`:button(key)}${resize}</th>`;
   };
   $('table').querySelector('thead').innerHTML=`<tr>${person?`<th scope="col" class="check"><input id="select-all" type="checkbox" aria-label="${kind==='staff'?'Selecionar todos os profissionais carregados':'Selecionar todos os jogadores carregados'}"></th>`:''}${columns.map(header).join('')}</tr>`;
   if(kind==='staff')$('table').querySelector('[data-sort="attribute_sum"]')?.setAttribute('title',`Soma dos ${staffScoring.length} atributos profissionais ativos, peso igual, máximo ${staffScoring.length*20}. Campos legados, personalidade e estilo não entram.`);
   $('table').querySelector('tbody').innerHTML = rows.length ? rows.map(row => `<tr data-uid="${row.uid}" class="${currentProfile?.row.uid === row.uid ? 'selected' : ''}">${person ? `<td class="check"><input type="checkbox" data-select="${row.uid}" aria-label="Selecionar ${esc(row.name)}" ${selection.has(row.uid) ? 'checked' : ''}></td>` : ''}${columns.map(key => {
-    if (key === 'name') return `<td class="name"><button data-profile="${row.uid}" ${kind==='clubs'?`title="${esc(row.name)}"`:''}>${kind==='clubs'?badge(row.short_name||row.name)+' ':''}${esc((kind==='clubs'?row.short_name:null) || row.name || `Registro ${row.uid}`)}</button>${person&&row.shortlisted?'<span class="fine" title="Na lista" aria-label="Na lista"> ★</span>':''}</td>`;
-    if(key==='contract_end')return `<td class="numeric tone-${contractTone(row)}">${row.contract_state==='free'?'Livre':row.contract_end?new Date(`${row.contract_end}T12:00:00`).toLocaleDateString('pt-BR',{month:'short',year:'numeric'}):'—'}</td>`;
+    if (key === 'name') return `<td class="name"><button data-profile="${row.uid}" ${kind==='clubs'?`title="${esc(row.name)}"`:''}>${kind==='clubs'?badge(row.short_name||row.name,row)+' ':''}${esc((kind==='clubs'?row.short_name:null) || row.name || `Registro ${row.uid}`)}</button>${person&&row.shortlisted?'<span class="fine" title="Na lista" aria-label="Na lista"> ★</span>':''}</td>`;
+    if(key==='contract_end')return `<td class="numeric tone-${contractTone(row)}" title="${esc(row.contract_state==='free'?'Sem contrato':fmtDate(row.contract_end))}">${row.contract_state==='free'?'Livre':compactContract(row.contract_end)}</td>`;
     if (key === 'league_name') return `<td>${esc(row.league_name||'Liga não lida')}</td>`;
     if (key === 'stadium_name') return `<td>${esc(row.stadium_name||'Nome não lido')}</td>`;
     if (key === 'staff_area' || key === 'staff_role') return `<td>${esc(row[key])}</td>`;
@@ -258,8 +297,8 @@ function renderTable() {
     if (key === 'positions') return `<td>${positionChips(row.natural_positions||[])}</td>`;
     if(key.startsWith('attr_'))return `<td class="numeric" title="${esc(attributeLabel(key.slice(5)))}">${heat(row[key])}</td>`;
     if (key === 'team_slot') return `<td title="Vínculo de equipe decodificado; categoria exata ainda sem nome confirmado">${row.team_slot==null?'—':row.team_slot===0?'Principal':`Secundária ${row.team_slot}`}</td>`;
-    if (key === 'club_name') return `<td title="${esc(row.club_name)}"><span class="cell-club">${badge(row.club_short_name||row.club_name)}<span>${esc(row.club_short_name || row.club_name || 'Sem vínculo decodificado')}</span></span></td>`;
-    if (key === 'nation_id') {const names=(row.nationalities||[]).map(n=>n.name).filter(Boolean);if(!names.length&&row.nation_name)names.push(row.nation_name);const flags=names.slice(0,3).map(countryFlag).join('');return `<td title="${esc(names.join('; '))}">${flags}${kind==='clubs'||!flags?esc(row.nation_name||'Nome indisponível'):''}</td>`;}
+    if (key === 'club_name') return `<td title="${esc(row.club_name)}"><span class="cell-club">${badge(row.club_short_name||row.club_name,row)}<span>${esc(row.club_short_name || row.club_name || 'Sem vínculo decodificado')}</span></span></td>`;
+    if (key === 'nation_id') {const names=(row.nationalities||[]).map(n=>n.name).filter(Boolean);if(!names.length&&row.nation_name)names.push(row.nation_name);const flags=names.slice(0,kind==='players'?3:1).map(name=>countryFlag(name)).join('');return `<td class="nationality-cell" title="${esc(names.join('; '))}"><span class="fm-flags">${flags}</span>${kind==='clubs'||!flags?esc(names[0]||'Nome indisponível'):''}</td>`;}
     if(key==='ca'&&pairedAbility)return `<td class="numeric"><span class="ability-pair"><b>${num(row.ca)}</b>${abilityBar(row)}<span class="ability-pa">${num(row.pa)}</span></span></td>`;
     if (key === 'eu_national') return `<td>${euLabel(row.eu_national)}</td>`;
     if (key === 'player_count' && row.player_count === 0) return '<td class="empty-squad">Nenhum jogador lido</td>';
@@ -269,8 +308,8 @@ function renderTable() {
   }).join('')}</tr>`).join('') : `<tr><td class="empty-row" colspan="${columns.length+(person?1:0)}">${view === 'shortlist' ? 'Sua lista está vazia. Marque jogadores na busca e clique em Adicionar à lista.' : view === 'squad' && !meta.managed.length ? 'O clube do treinador não foi identificado neste save. Use o filtro de clube na aba Jogadores.' : 'Nenhum registro atende aos filtros. Reduza os critérios ou clique em Limpar.'}</td></tr>`;
   $('table').querySelector('thead tr').insertAdjacentHTML('afterbegin','<th scope="col" class="row-number" title="Número da linha nos filtros e na ordenação atuais">Nº</th>');
   $('table').querySelectorAll('tbody tr[data-uid]').forEach((row,index)=>row.insertAdjacentHTML('afterbegin',`<td class="row-number">${num(index+1)}</td>`));
-  const widths={name:190,age:54,positions:112,nation_id:kind==='clubs'?140:64,eu_national:70,club_name:150,team_slot:95,league_name:170,ca:pairedAbility?128:54,pa:54,rating:62,attribute_sum:64,ability_difference:68,height_cm:60,staff_role:175,staff_area:140,reputation:90,player_count:95,ca_mean:74,pa_mean:74,age_mean:68,stadium_name:170};
-  $('table').querySelectorAll('thead th').forEach((th,index)=>{const key=columns[index-1-(person?1:0)];const width=th.classList.contains('row-number')?36:th.classList.contains('check')?32:key?.startsWith('attr_')?46:widths[key]||(moneyColumns.includes(key)?110:90);th.style.width=`${width}px`;});
+  $('table').querySelectorAll('thead th').forEach(th=>{const width=th.classList.contains('row-number')?36:th.classList.contains('check')?32:columnWidth(th.dataset.columnKey,pairedAbility);th.style.width=`${width}px`;});
+  sizeTable();
   $('table').querySelectorAll('thead [data-sort^="attr_"]').forEach(button=>{button.title=attributeLabel(button.dataset.sort.slice(5));button.textContent=button.title.slice(0,3)+(button.dataset.sort===sort?(direction==='desc'?' ↓':' ↑'):'');});
   const empty=$('table').querySelector('.empty-row');if(empty)empty.colSpan++;
   applyDataStyles($('table'));
@@ -313,7 +352,7 @@ async function changeShortlist(uids, add, allowUndo=true) {
     if(kind!==requestedKind||viewVersion!==requestedView||loading)return;
     rows.forEach(row=>{if(ids.has(row.uid))row.shortlisted=add;});
     if(currentProfile&&ids.has(currentProfile.row.uid)){currentProfile.shortlisted=add;renderProfile();}
-    $('shortlist-count').textContent=num(result.shortlist_count);
+    if(kind==='players')$('shortlist-count').textContent=num(result.shortlist_count);
     $('export').disabled=!result.shortlist_count;
     const verb=add?'adicionado':'removido';
     notice(`${num(result.changed)} ${verb}${result.changed===1?'':'s'} à lista.`);
@@ -417,7 +456,7 @@ function renderProfile() {
   const tabButtons=keys=>keys.map(key=>`<button data-profile-tab="${key}" class="${key===profileTab?'active':''}" aria-pressed="${key===profileTab}">${tabs[key]}</button>`).join('');
   const clubName=kind==='clubs'?r.short_name||r.name:r.club_short_name||r.club_name||'Sem vínculo decodificado';
   const watchButton=kind!=='clubs'?`<button id="profile-watch" class="${shortlisted?'listed':''}" title="${shortlisted?'Remover da lista':'Adicionar à lista'}" aria-label="${shortlisted?'Remover da lista':'Adicionar à lista'}">${icon('star')}</button>`:'';
-  $('profile').innerHTML = `<div class="profile-heading"><div class="profile-topline">${badge(clubName)}<span title="${esc(clubName)}">${esc(clubName)}${r.league_name?' · '+esc(r.league_name):''}</span>${watchButton}<button id="close-profile" title="Fechar (Esc)" aria-label="Fechar perfil">${icon('close')}</button></div><div class="profile-name"><h2>${esc(profileName(r)||`Registro ${r.uid}`)}</h2><button id="copy-name" title="Copiar nome" aria-label="Copiar nome" ${profileName(r)?'':'disabled'}>${icon('copy')}</button></div><div>${player?positionChips(r.natural_positions||[]):staff?`<span class="position-chip">${esc(r.staff_role)}</span>`:''}</div><p>${kind==='clubs'?esc(r.nation_name||''):`${num(r.age)} anos${staff?' · '+esc(r.staff_area):''}`}</p>${player?`<p>${esc(nationalityLabel(r))}</p>`:''}${kind!=='clubs'?`<div class="profile-actions"><button id="profile-select">${selection.has(r.uid)?'Desmarcar':'Selecionar'}</button></div>`:''}</div>
+  $('profile').innerHTML = `<div class="profile-heading"><div class="profile-topline">${badge(clubName,r)}<span title="${esc(clubName)}">${esc(clubName)}${kind!=='clubs'&&r.league_name?' · '+esc(r.league_name):''}</span>${watchButton}<button id="close-profile" title="Fechar (Esc)" aria-label="Fechar perfil">${icon('close')}</button></div><div class="profile-name"><h2>${esc(profileName(r)||`Registro ${r.uid}`)}</h2><button id="copy-name" title="Copiar nome" aria-label="Copiar nome" ${profileName(r)?'':'disabled'}>${icon('copy')}</button></div><div>${player?positionChips(r.natural_positions||[]):staff?`<span class="position-chip">${esc(r.staff_role)}</span>`:''}</div>${kind!=='clubs'?`<p>${num(r.age)} anos${staff?' · '+esc(r.staff_area):''}</p>`:''}${nationalityHeader(r)}${kind!=='clubs'?`<div class="profile-actions"><button id="profile-select">${selection.has(r.uid)?'Desmarcar':'Selecionar'}</button></div>`:''}</div>
   <div class="profile-metrics"><div class="metric-grid">${metricItems.map(([label,value])=>`<div class="metric ${label.startsWith('PA')?'pa':''}"><label>${label}</label><strong>${value==null?'—':num(Number(Number(value).toFixed(1)))}</strong></div>`).join('')}</div>${kind!=='clubs'?abilityBar(r):''}${player?`<div class="metrics-caption"><span>${compactMoney(r.model_value)} · ${compactMoney(r.wage,true)}</span><span>${r.ability_difference>0?'+'+r.ability_difference+' até o potencial':''}</span></div>`:''}</div>
   <div class="profile-tabs">${tabButtons(primaryKeys)}</div><div class="profile-content">${content}</div><details class="profile-extras" ${!primaryKeys.includes(profileTab)?'open':''}><summary>Mais informações</summary><div class="profile-tabs">${tabButtons(Object.keys(tabs).filter(key=>!primaryKeys.includes(key)))}</div><p class="fine">† CA/PA, altura, salário, habilidades profissionais, cargos e liga: leitura experimental. Conferências pontuais documentadas; nem todos os registros foram validados.</p></details>`;
   applyDataStyles($('profile'));
@@ -582,7 +621,7 @@ async function poll() {
     if (data.loading) { $('loading-step').textContent=data.progress;$('message').hidden=true; $('footer-state').textContent = 'Lendo cópia do save…'; polling = setTimeout(poll,600); return; }
     lockLoading(false);
     if (data.error) { notice(data.error,true);$('welcome').hidden=!!meta;$('workspace').hidden=!meta;if (meta) await changeView(view); return; }
-    meta = data.meta; $('reload').disabled=!meta;optionsKind=null;currentProfile = null; selection.clear(); updateSelection();
+    meta = data.meta; $('shortlist-count').textContent=meta?num(data.shortlist_count):''; $('reload').disabled=!meta;optionsKind=null;currentProfile = null; selection.clear(); updateSelection();
     if (meta) {
       const managed=meta.managed?.[0];if(managed?.club_uid!=null)managed.player_count=(await api(`rows?kind=players&club=${managed.club_uid}&limit=1&columns=name`)).total;
       salaryPrefs=await api('salaries');updateSalaryLabels();$('salary-settings').disabled=false;
@@ -622,6 +661,7 @@ function syncPickers() {
   for(const [id,picker]of Object.entries(pickers)) {
     const selected=picker.input.value.split(',').filter(Boolean);
     picker.button.textContent=selected.length===0?picker.options.length?`Todos · ${pickerNames[id]}`:id==='league'?'Liga do clube ainda não identificada':'Nomes ainda indisponíveis':selected.length===1?picker.options.find(o=>o.value===selected[0])?.label||'Opção salva indisponível':`${selected.length} opções selecionadas`;
+    if(['nation','based'].includes(id)&&selected.length)picker.button.innerHTML=`<span class="fm-country-chips">${selected.map(value=>{const label=picker.options.find(o=>o.value===value)?.label||'Opção salva indisponível';return `<span class="fm-country-chip">${countryFlag(label,'token')}${esc(label)}</span>`;}).join('')}</span>`;
     picker.button.title=selected.map(v=>picker.options.find(o=>o.value===v)?.label||'Opção salva indisponível').join(' · ');
     picker.button.disabled=picker.input.disabled||!picker.options.length;
   }
@@ -632,7 +672,7 @@ function renderPickerOptions() {
   const selected=new Set(picker.input.value.split(',').filter(Boolean));
   const choices=picker.options.filter(o=>o.label.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLocaleLowerCase('pt-BR').includes(search));
   const visible=choices.slice(0,120);
-  $('picker-options').innerHTML=visible.length?visible.map(o=>`<label class="picker-option"><input type="checkbox" data-picker-value="${esc(o.value)}" ${selected.has(o.value)?'checked':''}><span>${esc(o.label)}</span></label>`).join(''):'<p class="fine">Nenhuma opção corresponde à busca.</p>';
+  $('picker-options').innerHTML=visible.length?visible.map(o=>`<label class="picker-option"><input type="checkbox" data-picker-value="${esc(o.value)}" ${selected.has(o.value)?'checked':''}>${['nation','based'].includes(activePicker)?countryFlag(o.label,'picker'):''}<span>${esc(o.label)}</span></label>`).join(''):'<p class="fine">Nenhuma opção corresponde à busca.</p>';
   $('picker-count').textContent=`${visible.length} de ${choices.length} opções${choices.length>120?' · refine a busca':''}`;
   updatePickerSummary();
 }
@@ -769,9 +809,9 @@ document.addEventListener('click',action(async event => {
     }
     case 'save-columns': {
       visibleColumns[kind]=[...document.querySelectorAll('[data-column]:checked')].map(c=>c.dataset.column);
-      await api('layouts',visibleColumns);$('columns-dialog').close();return refreshRows();
+      await api('layouts',{...visibleColumns,_widths:columnWidths});$('columns-dialog').close();return refreshRows();
     }
-    case 'reset-columns': visibleColumns[kind]=[...baseColumns[kind]];await api('layouts',visibleColumns);$('columns-dialog').close();return refreshRows();
+    case 'reset-columns': visibleColumns[kind]=[...baseColumns[kind]];columnWidths[kind]={};await api('layouts',{...visibleColumns,_widths:columnWidths});$('columns-dialog').close();return refreshRows();
     case 'profile-select': toggleSelection(currentProfile.row.uid); break;
     case 'profile-watch': return changeShortlist([currentProfile.row.uid],!currentProfile.shortlisted);
     case 'export': $('list-dialog').showModal();break;
@@ -847,6 +887,28 @@ $('table').querySelector('thead').addEventListener('contextmenu',event=>{
   event.preventDefault();$('columns').click();
 });
 $('search').addEventListener('input',()=>{clearTimeout(debounce);debounce=setTimeout(action(()=>refreshRows(true)),200);});
+$('table').addEventListener('pointerdown',event=>{
+  const handle=event.target.closest('.column-resize');
+  if(!handle||event.button!==0||loading)return;
+  event.preventDefault();handle.focus();
+  const startX=event.clientX,startWidth=parseFloat(handle.closest('th').style.width);
+  handle.setPointerCapture(event.pointerId);handle.classList.add('resizing');
+  const move=e=>resizeColumn(handle,startWidth+e.clientX-startX);
+  const finish=()=>{handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',finish);handle.removeEventListener('pointercancel',finish);handle.classList.remove('resizing');saveColumnWidths();};
+  handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',finish);handle.addEventListener('pointercancel',finish);
+});
+$('table').addEventListener('keydown',event=>{
+  const handle=event.target.closest('.column-resize');
+  if(!handle)return;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))event.stopPropagation();
+  if(!['ArrowLeft','ArrowRight'].includes(event.key)||loading)return;
+  event.preventDefault();resizeColumn(handle,parseFloat(handle.closest('th').style.width)+(event.key==='ArrowRight'?1:-1)*(event.shiftKey?50:10));saveColumnWidths();
+});
+$('table').addEventListener('dblclick',event=>{
+  const handle=event.target.closest('.column-resize');
+  if(!handle||loading)return;
+  delete columnWidths[kind][handle.closest('th').dataset.columnKey];renderTable();saveColumnWidths();
+});
 $('picker-search').addEventListener('input',renderPickerOptions);
 document.addEventListener('keydown',action(async event=>{
   const key=event.key.toLowerCase();
@@ -864,7 +926,7 @@ document.addEventListener('keydown',action(async event=>{
 }));
 async function init() {
   const data=await api('status'); groups=data.groups;columnGroups=data.column_groups;staffScoring=data.staff_scoring_attributes; roles=data.roles; saves=data.saves;traitLabels=data.traits;buildSearch();saveButtons($('save-list')); await refreshPresets();
-  const layout=await api('layouts');visibleColumns={...visibleColumns,...layout};
+  const {_widths={},...layout}=await api('layouts');visibleColumns={...visibleColumns,...layout};columnWidths={...columnWidths,..._widths};
   $('trait-grid').innerHTML=traitLabels.map(t=>`<label class="checkbox-label"><input type="checkbox" data-trait="${t.id}">${esc(t.name)}</label>`).join('');
   document.querySelectorAll('[data-icon]').forEach(node=>node.innerHTML=icon(node.dataset.icon));
   $('filter-bar').prepend($('opportunities'));

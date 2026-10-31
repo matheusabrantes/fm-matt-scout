@@ -1,0 +1,178 @@
+:root {
+  color-scheme: light;
+  --c-header: rgba(255,255,255,.92);
+  --c-save-card: rgba(255,255,255,.65);
+  --c-seg-selected: #FFFFFF;
+  --c-progress-track: #E8E8ED;
+  --c-active-toolbar: #E6E6EB;
+  --c-hover-overlay: rgba(0,0,0,.06);
+  --c-active-overlay: rgba(0,0,0,.08);
+  --c-field-border: rgba(0,0,0,.1);
+  --c-card-border: rgba(0,0,0,.08);
+  --c-scrollbar-thumb: rgba(0,0,0,.22);
+  --c-pitch: #F3F5F2;
+  --c-pitch-border: #E3E7E1;
+  --c-pitch-line: rgba(40,70,40,.13);
+  --c-column-handle: #E5E5EA;
+  --c-column-handle-active: #C7C7CC;
+  --c-attribute-segment: #EDEDF0;
+  --c-comparison-bar: #D1D1D6;
+  --c-error-background: #9B1523;
+  --prof-med-bar: #8EB0F5;
+  --prof-weak-bar: #C9D5EE;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --c-window: #1E1E20;
+  --c-sidebar: #18181A;
+  --c-line-sidebar: #0C0C0D;
+  --c-inspector: #232326;
+  --c-row-alt: #232325;
+  --c-header: rgba(30,30,32,.9);
+  --c-popover: rgba(42,42,46,.97);
+  --c-hud: rgba(70,70,76,.96);
+  --c-save-card: rgba(255,255,255,.05);
+  --c-text: #F2F2F5;
+  --c-text-2: #D6D6DB;
+  --c-text-3: #A8A8AF;
+  --c-text-4: #9A9AA1;
+  --c-text-5: #6A6A70;
+  --c-line: #2C2C30;
+  --c-line-row: #2C2C30;
+  --c-line-toolbar: #353539;
+  --c-seg-track: #2E2E32;
+  --c-seg-selected: #5A5A5F;
+  --c-control: #2A2A2E;
+  --c-hover: #2C2C30;
+  --c-progress-track: #3A3A3F;
+  --c-checkbox: #56565C;
+  --c-active-toolbar: #38383D;
+  --c-hover-overlay: rgba(255,255,255,.07);
+  --c-active-overlay: rgba(255,255,255,.10);
+  --c-field-border: rgba(255,255,255,.10);
+  --c-card-border: rgba(255,255,255,.08);
+  --c-scrollbar-thumb: rgba(255,255,255,.22);
+  --c-accent: #3D7EF7;
+  --c-token-bg: #1C2840;
+  --c-token-border: #2D4C8A;
+  --c-accent-track: #34508C;
+  --c-tone-free: #FF5A5F;
+  --c-tone-urgent: #FF8A4C;
+  --c-tone-soon: #E5A743;
+  --c-good: #3FCF6E;
+  --pg-gk: #F2C14E;
+  --pg-gk-bg: rgba(242,193,78,.16);
+  --pg-def: #7EAEFF;
+  --pg-def-bg: rgba(80,140,255,.18);
+  --pg-mid: #5BD38A;
+  --pg-mid-bg: rgba(60,200,120,.16);
+  --pg-att: #FF7B82;
+  --pg-att-bg: rgba(255,90,100,.17);
+  --c-pitch: #18241A;
+  --c-pitch-border: #25352A;
+  --c-pitch-line: rgba(170,220,170,.14);
+  --prof-weak-bg: #252A35;
+  --prof-weak-ring: #3A4560;
+  --prof-med-bg: #2C4B8C;
+  --prof-med-fg: #D6E3FF;
+  --prof-strong-bg: var(--c-accent);
+  --prof-none: #4A5249;
+  --prof-med-bar: #7EAEFF;
+  --prof-weak-bar: #3A4560;
+  --c-column-handle: #353539;
+  --c-column-handle-active: #56565C;
+  --c-attribute-segment: #2E2E32;
+  --c-comparison-bar: #56565C;
+}
+
+.theme-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 2px;
+  flex: none;
+}
+.toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--c-line-toolbar);
+  flex: none;
+}
+#toolbar-actions[hidden] + .theme-control .toolbar-divider { display: none; }
+#theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--c-text-2);
+}
+#theme-toggle:hover { background: var(--c-line); }
+#theme-toggle .icon { width: 16px; height: 16px; stroke-width: 1.4; }
+#toolbar-actions > button { color: var(--c-text-2); }
+#toolbar-actions > button[aria-expanded="true"] { background: var(--c-active-toolbar); }
+#sidebar-toggle:hover { background: var(--c-hover-overlay); }
+.tabs button[aria-current="page"],
+.filter-token button:last-child:hover { background: var(--c-active-overlay); }
+#save-card { background: var(--c-save-card); box-shadow: 0 0 0 .5px var(--c-card-border); }
+#save-badge, .loading-badge { color: var(--c-window); }
+input, select, .picker-button { box-shadow: inset 0 0 0 .5px var(--c-field-border); }
+input[type="checkbox"], .search-field input { box-shadow: none; }
+.search-field { box-shadow: inset 0 0 0 .5px var(--c-card-border); }
+input::placeholder { color: var(--c-text-5); }
+.segmented button[aria-pressed="true"],
+.opportunities button[aria-pressed="true"],
+.search-tabs button[aria-selected="true"],
+#advanced .search-tabs button[aria-selected="true"],
+.profile-tabs button.active { background: var(--c-seg-selected); }
+#table th { background: var(--c-header); }
+.mini-bar { background: var(--c-progress-track); }
+dialog, #advanced .filter-footer, .contract-card { background: var(--c-window); }
+#picker-dialog { background: var(--c-popover); }
+.contract-card { box-shadow: 0 0 0 1px var(--c-progress-track); }
+.pitch { background: var(--c-pitch); box-shadow: inset 0 0 0 1px var(--c-pitch-border); }
+.pitch-lines {
+  border-color: var(--c-pitch-line);
+  background: linear-gradient(transparent calc(50% - .5px),var(--c-pitch-line) calc(50% - .5px),var(--c-pitch-line) calc(50% + .5px),transparent calc(50% + .5px));
+}
+.pitch-lines::before, .pitch-lines::after, .pitch-circle { border-color: var(--c-pitch-line); }
+.pitch button { background: var(--c-window); transition: none; }
+.pitch button[aria-pressed="true"] { background: var(--c-accent); }
+.position-rating.medium .mini-bar b { background: var(--prof-med-bar); }
+.position-rating.weak .mini-bar b { background: var(--prof-weak-bar); }
+.attribute-segments button { background: var(--c-attribute-segment); }
+.comparison-bars i { background: var(--c-comparison-bar); }
+.comparison-bars i.winner { background: var(--c-accent); }
+#message.error { background: var(--c-error-background); }
+::-webkit-scrollbar-thumb { background-color: var(--c-scrollbar-thumb); }
+.column-resize::after { background: var(--c-column-handle); }
+.column-resize:hover::after, .column-resize.resizing::after { background: var(--c-column-handle-active); }
+
+@media (max-width: 1000px) {
+  #toolbar-actions > button {
+    font-size: 0;
+    gap: 0;
+    width: 28px;
+    padding: 0;
+    justify-content: center;
+  }
+  #filter-count { font-size: 10px; }
+}
+
+@media (max-width: 700px) {
+  .theme-control { gap: 5px; margin-left: 0; }
+  .toolbar-heading { min-width: 44px; }
+}
+
+@media (min-width: 1001px) and (max-width: 1100px) {
+  body.has-profile #toolbar-actions .search-field { width: 240px; }
+}
+
+@media (min-width: 701px) and (max-width: 1000px) {
+  body.has-profile #toolbar-actions .search-field { width: clamp(76px,calc(100vw - 774px),100px); }
+}

@@ -93,5 +93,16 @@ class LayoutTests(unittest.TestCase):
             self.assertEqual(json.loads(self.path.read_text())['_version'],2)
             with self.assertRaises(urllib.error.HTTPError):request({'players':['not-a-column']})
             self.assertEqual(request(),{'players':['name','ca','model_fee']})
+            widths={'players':{'name':240,'ca':128},'staff':{'name':180},'clubs':{}}
+            self.assertEqual(request({'players':['name','ca'],'_widths':widths}),{'ok':True})
+            self.assertEqual(request(),{'players':['name','ca'],'_widths':widths})
+            request({'players':['name']})
+            self.assertEqual(request(),{'players':['name'],'_widths':widths})
+            for invalid in (None, [], {'unknown':{}}, {'players':[]}, {'players':{'unknown':80}},
+                            {'players':{'age':True}}, {'players':{'name':39}}, {'players':{'name':1001}},
+                            {'players':{'name':'240'}}, {'players':{'name':240.5}}):
+                before=self.path.read_bytes()
+                with self.assertRaises(urllib.error.HTTPError):request({'players':['name'],'_widths':invalid})
+                self.assertEqual(self.path.read_bytes(),before)
         finally:
             server.shutdown();server.server_close();thread.join()

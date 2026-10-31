@@ -18,6 +18,7 @@ from salaries import SalarySettings
 from fmsave.models.players import Trait
 
 ROOT = Path(__file__).parent
+FLAG_ASSETS = {f'flags/{path.name}' for path in (ROOT / 'web/flags').glob('*') if path.suffix in ('.png', '.svg')}
 SAVE_DIR = Path.home() / 'Library/Application Support/Sports Interactive/Football Manager 26/games'
 
 
@@ -64,6 +65,16 @@ def ordered_columns(columns, kind):
     return sorted(columns, key=lambda column: order.get(column, len(order)))
 
 
+def validate_column_widths(widths):
+    if not isinstance(widths, dict):
+        raise ValueError('Larguras de colunas inválidas.')
+    for kind, columns in widths.items():
+        if kind not in COLUMN_ORDER or not isinstance(columns, dict) or any(
+                column not in COLUMN_ORDER[kind] or type(width) is not int or not 40 <= width <= 1000
+                for column, width in columns.items()):
+            raise ValueError('Larguras de colunas inválidas.')
+
+
 def read_layouts(path):
     if not path.exists():
         return {}
@@ -73,6 +84,8 @@ def read_layouts(path):
     version = layout.pop('_version', 0)
     if version not in (0, 1, 2):
         raise ValueError('Versão de layout não suportada.')
+    if '_widths' in layout:
+        validate_column_widths(layout['_widths'])
     if version == 0:
         if 'players' in layout:
             if not isinstance(layout['players'], list):
@@ -153,13 +166,14 @@ def serve(port=0, storage=None):
             if path is None:
                 return
             try:
-                if path in ('', 'index.html', 'app.js', 'style.css'):
+                if path in ('', 'index.html', 'app.js', 'style.css', 'theme.js', 'theme.css', 'flags.js', 'flags.css') or path in FLAG_ASSETS:
                     file = ROOT / 'web' / (path or 'index.html')
                     self.reply(file.read_bytes(), content_type=mimetypes.guess_type(file)[0] or 'text/plain')
                     return
                 with lock:
                     if path == 'api/status':
                         self.reply({**state, 'meta': scout.meta,
+                                    'shortlist_count': len(scout.shortlisted('players')) if scout.meta else None,
                                     'saves': [{'path': str(p), 'name': p.name, 'size': p.stat().st_size}
                                               for p in sorted(SAVE_DIR.glob('*.fm'), key=lambda p: p.stat().st_mtime, reverse=True)],
                                     'groups': GROUPS, 'column_groups': COLUMN_GROUPS, 'staff_scoring_attributes': SCORING_SKILLS,
@@ -209,6 +223,7 @@ def serve(port=0, storage=None):
                         columns = ('uid', 'unique_id', 'name', 'age', 'nation_id', 'nation_name', 'eu_national', 'club_name', 'club_short_name', 'club_uid',
                                    'natural_positions', 'team_slot', 'ca', 'pa', 'attribute_sum', 'goalkeeping_sum', 'rating', 'best_role', 'contract_end',
                                    'ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','model_value_basis','model_fee_basis','contract_state','nationalities')
+                        columns += ('club_background', 'club_foreground', 'club_colors_source')
                         if kind == 'clubs':
                             columns += ('short_name','reputation','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count')
                         requested = query.get('columns', '').split(',')
@@ -264,11 +279,15 @@ def serve(port=0, storage=None):
                     raise ValueError('Solicitação inválida.')
                 with lock:
                     if path == 'api/layouts':
-                        for key, value in body.items():
+                        widths = body.get('_widths', read_layouts(layout_path).get('_widths', {}))
+                        validate_column_widths(widths)
+                        layout = {key: value for key, value in body.items() if key != '_widths'}
+                        for key, value in layout.items():
                             if key not in scout.rows or not isinstance(value, list) or not 1 <= len(value) <= 82 or 'name' not in value or any(c not in layout_columns for c in value):
                                 raise ValueError('Layout inválido. Preserve a coluna Nome e use até 82 colunas.')
                         temporary = layout_path.with_suffix('.tmp')
-                        temporary.write_text(json.dumps({**{kind: ordered_columns(columns, kind) for kind, columns in body.items()}, '_version': 2}))
+                        temporary.write_text(json.dumps({**{kind: ordered_columns(columns, kind) for kind, columns in layout.items()},
+                                                         **({'_widths': widths} if widths else {}), '_version': 2}))
                         temporary.replace(layout_path)
                         self.reply({'ok': True})
                         return
@@ -331,7 +350,10 @@ def serve(port=0, storage=None):
             except (ValueError, KeyError, TypeError) as exc:
                 self.reply({'error': str(exc)}, 400)
 
-    server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
+    class LocalServer(ThreadingHTTPServer):
+        request_queue_size = 64
+
+    server = LocalServer(('127.0.0.1', port), Handler)
     url = f'http://127.0.0.1:{server.server_port}/{token}/'
     print(url, flush=True)
     return server, url
