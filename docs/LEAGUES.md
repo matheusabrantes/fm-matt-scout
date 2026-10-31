@@ -1,6 +1,44 @@
-# Liga do clube: nomes e vínculo parcial com o save
+# Liga atual e estádio do clube
 
-Investigado em 13/10/2026. A busca usa nomes e códigos somente como chaves internas. O FM aberto não foi usado.
+## Leitura direta em 30/10/2026
+
+`club_locations.py` lê a divisão **atual** e a referência do estádio no objeto de status do próprio clube. O parser aceita somente `26.3.2+2329565`, exige o índice do clube conferido contra seu registro básico, as duas cópias do identificador, dez bytes de confirmação zerados, tipo normal `0x0A` e reputação válida. Objetos duplicados ou sem dono inequívoco ficam ausentes.
+
+Os offsets abaixo partem da primeira cópia do identificador no objeto de status:
+
+| Offset | Campo | Espaço de identificação |
+| --- | --- | --- |
+| +13 | Divisão atual, u32 | Entidades de competição do save |
+| +17 | Divisão anterior, u32 | Não utilizada para a liga atual |
+| +25 | Estádio principal, u32 | Ordinal do estádio do fmsave + 1 |
+
+A associação de competição usa os pares estruturais já validados pelo `fmsave.readers.competitions.locate_competition_database_ids`. O campo direto estabelece que essa entidade é a divisão do clube; não exige que ela tenha calendário ou uma tabela de classificação simulada. A lista de `save.competitions()` sozinha excluiria 14.526 clubes com divisão nomeada porque eles não têm estágios carregados no COR. Não se deduz a liga pelo país, reputação, participantes de uma copa ou base inicial.
+
+Os nomes são lidos localmente do `lang_db.dat` **instalado com o FM**, na pasta padrão do Steam para Mac. São descomprimidos apenas o diretório e os dois frames necessários, com limites de tamanho. As tabelas PT-BR `19_25` e `19_21` têm, respectivamente, 7.947 competições e 50.907 estádios, ambas verificadas até o último byte. Nenhuma cópia integral dessas tabelas proprietárias é distribuída com o aplicativo. Se o FM não estiver nessa pasta, se a base não tiver o formato reconhecido ou se um nome faltar, o nome permanece desconhecido; o pequeno mapa `league-names.csv` continua disponível como referência anterior.
+
+### Identidade dos estádios
+
+O identificador público de estádio produzido pelo fmsave é o identificador do cabeçalho + 1. Ele não é, em geral, a chave da tabela instalada de nomes. O corpo de um registro é nomeado pelo identificador armazenado no **cabeçalho seguinte**, cujo ordinal deve ser consecutivo. A diferença fica visível quando há lacunas nos IDs: o estádio principal do Corinthians tem UID público 19.141.016, mas o cabeçalho seguinte armazena 19.141.329, que identifica **Neo Química Arena** na localização. Somar um ao primeiro ID produziria um nome ausente ou errado. O Santiago Bernabéu não evidencia esse problema porque seus IDs são consecutivos.
+
+O exame independente do frame 22 de `server_db.dat` instalado confirmou a mesma sequência: corpo com 48.905 assentos, cabeçalho armazenado 19.141.015 e próximo cabeçalho 19.141.329. No save, o vínculo de status do Corinthians aponta diretamente para esse corpo. A capacidade é lida do save, e o nome é rotulado como referência da base instalada. Um nome inline do próprio save tem prioridade. O último registro, sem cabeçalho seguinte de estádio, não recebe nome externo por aproximação. Um nome da base instalada pode não refletir uma alteração de nome sem string inline legível no save.
+
+### Probe COR
+
+Antes da exclusão de clubes femininos, foram encontrados 33.593 status de clubes com identidade confirmada, 26.574 divisões nomeadas, 28.934 vínculos diretos a estádio e 28.842 estádios principais nomeados. Esses números são do snapshot COR de 30/10; não são uma garantia de cobertura para toda carreira.
+
+| Clube | Divisão atual | Estádio | Assentos no save |
+| --- | --- | --- | ---: |
+| Corinthians | Brasileirão | Neo Química Arena | 48.905 |
+| Liverpool | Premier League | Anfield | 61.276 |
+| Manchester City | Premier League | City of Manchester Stadium | 53.400 |
+| Bayern | Bundesliga | Allianz-Arena | 75.000 |
+| Real Madrid | Primeira Divisão Espanhola | Santiago Bernabéu | 83.186 |
+
+`qa/test_club_locations.py` verifica divisão atual diferente da anterior, rejeição de dono/incorporação/versão inválidos, duplicatas, truncamento, referências ausentes, lacunas nos IDs dos estádios, prioridade do nome inline e formatos dos nomes. A conferência visual no FM é registrada separadamente pela tarefa principal.
+
+## Histórico: vínculo parcial por tabelas
+
+O restante desta seção registra a implementação anterior, substituída pela leitura direta acima quando disponível. Investigado em 13/10/2026. A busca usa nomes e códigos somente como chaves internas. O FM aberto não foi usado.
 
 ## Origem dos nomes
 
@@ -36,3 +74,9 @@ Corinthians masculino não aparece em uma tabela nacional utilizável nessa leit
 ## Limites
 
 Ainda não foi decodificado o campo direto de divisão atual de todos os clubes. A ligação agora é útil nos clubes cobertos pelas tabelas, mas não cobre os 32.867 clubes visíveis do COR, equipes fora das ligas simuladas ou temporadas ainda sem tabela utilizável. Promoção/rebaixamento e estruturas especiais não são reconstruídos. A interface informa a cobertura, permite selecionar várias ligas pelo nome e preserva filtros/colunas.
+
+## Conferência visual no FM em 30/10/2026
+
+Na carreira COR, data 30/12/2025, as páginas dos próprios clubes confirmaram Corinthians / Brasileirão - Série A / Neo Química Arena; Bayern / Bundesliga / Allianz-Arena; Real Madrid / La Liga Santander / Santiago Bernabéu. O vínculo da divisão é o mesmo, mas nomes comerciais/customizados do jogo podem diferir da base localizada instalada (por exemplo, Primeira Divisão Espanhola). Não houve alteração de valores no editor.
+
+Após ocultar os 1.017 clubes femininos de referência: 32.867 clubes visíveis, 25.593 com divisão atual nomeada e 27.933 com estádio nomeado no probe direto. Esses números não incluem eventuais vínculos alternativos por calendário/tabelas.

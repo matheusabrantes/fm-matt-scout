@@ -7,13 +7,21 @@ import sqlite3
 import tempfile
 import unicodedata
 import warnings
+from calendar import monthrange
 from datetime import date
 from statistics import fmean
 from pathlib import Path
 
 import fmsave
+from club_debt import read_current_club_debts
+from club_finances import read_current_club_finances
+from club_locations import read_current_club_links, read_installed_names, stadium_reference_fields
+from fmsave.readers.competitions import find_competition_id_pair_layout, locate_competition_database_ids
+from contract_reader import RELEASE_KINDS, contract_state, listing_status
+from player_values import market_value_fields
+from value_model import enrich_estimates
 from staff_roles import ROLES as STAFF_ROLES
-from staff_skills import SKILLS as STAFF_SKILLS, enrich_staff_skills
+from staff_skills import SKILLS as STAFF_SKILLS, SCORING_SKILLS as STAFF_SCORING_SKILLS, enrich_staff_skills
 
 NATION_NAMES = {int(key): value for key, value in json.loads((Path(__file__).parent / 'nation-names.json').read_text()).items()}
 _CLUB_GENDERS = json.loads((Path(__file__).parent / 'club-genders.json').read_text())
@@ -83,9 +91,8 @@ RANGES = {'age': 100, 'ca': 200, 'pa': 200, 'ability_difference': 200, 'sum': 72
           'club_reputation': 10000, 'reputation': 10000, 'value': 10**12, 'wage': 10**12,
           'release_fee': 10**12, 'balance': 10**12, 'transfer_budget_remaining': 10**12,
           'wage_budget_weekly': 10**12, 'height_cm': 255,
-          'stadium_seated_capacity': 1000000, 'stadium_expansion_capacity': 1000000}
-RELEASE_KINDS = {'minimum_fee_release', 'minimum_fee_release_foreign', 'minimum_fee_release_domestic',
-                 'minimum_fee_release_domestic_higher_division', 'relegation_release', 'non_promotion_release'}
+          'stadium_seated_capacity': 1000000, 'stadium_expansion_capacity': 1000000,
+          'model_value': 10**12, 'model_fee': 10**12}
 
 
 def contract_fields(row):
@@ -97,9 +104,16 @@ def contract_fields(row):
     row['contract_kind_code'] = c.get('kind_code')
     clauses = c.get('clauses') or []
     row['release_kinds'] = [clause['kind'] for clause in clauses if clause['kind'] in RELEASE_KINDS]
-    fees = [clause['value'] for clause in clauses if clause['kind'] in RELEASE_KINDS and clause.get('value') is not None]
-    row['release_fee'] = min(fees) if fees else None
-    row['has_contract_data'] = bool(c) or row.get('has_contract', False)
+    for column, clause_kind in (('release_fee', 'minimum_fee_release'),
+                                ('release_fee_domestic', 'minimum_fee_release_domestic'),
+                                ('release_fee_foreign', 'minimum_fee_release_foreign')):
+        fees = [clause['value'] for clause in clauses if clause['kind'] == clause_kind
+                and clause.get('parameter') is None and clause.get('value') is not None]
+        row[column] = min(fees) if fees else None
+    row['contract_state'] = contract_state(row)
+    if 'contract' in row and (row['contract_state'] != 'contracted' or c.get('end_source') != 'contract'):
+        row['contract_start'] = row['contract_end'] = None
+    row['has_contract_data'] = row['contract_state'] == 'contracted' or row.get('has_contract', False)
     return row
 GROUPS = {'Técnicos': TECHNICAL, 'Mentais': MENTAL, 'Físicos': PHYSICAL,
           'Goleiro': GOALKEEPING, 'Ocultos': HIDDEN, 'Personalidade': PERSONALITY,
@@ -149,7 +163,7 @@ def normalized(text):
 def column_value(row, column):
     if column.startswith('attr_'):
         key = column[5:]
-        if key in STAFF_SKILLS:
+        if 'professional_attributes' in row and key in STAFF_SKILLS:
             return row.get('professional_attributes', {}).get(key)
         return (row.get('personality' if key in PERSONALITY else 'attributes') or {}).get(key)
     return row.get(column)
@@ -188,12 +202,16 @@ def exclude_female_clubs(clubs, players, staff):
             [s for s in staff if s.get('club_uid') not in hidden], len(hidden))
 
 
-def club_stadium_fields(clubs, stadiums):
+def club_stadium_fields(clubs, stadiums, links=None, grounds=None):
     homes = {}
     for stadium in stadiums:
         for uid in stadium.get('home_club_uids', ()):
             homes.setdefault(uid, []).append(stadium)
     for club in clubs:
+        ground = (grounds or {}).get((links or {}).get(club['uid'], {}).get('stadium_ordinal'))
+        if ground is not None:
+            club.update(ground, stadium_source='club_status')
+            continue
         matches = homes.get(club['uid'], [])
         # Ownership is not the stadium used for home matches; multiple grounds remain ambiguous.
         if len(matches) == 1:
@@ -203,19 +221,23 @@ def club_stadium_fields(clubs, stadiums):
                         stadium_expansion_capacity=ground.get('expansion_capacity'))
 
 
-def club_league_fields(clubs, competitions, tables, names):
+def club_league_fields(clubs, competitions, tables, names, links=None, database_ids=None, table_names=None):
     by_id = {c['id']: c for c in competitions}
     choices = {}
     for table in tables:
         competition = by_id.get(table.get('competition_id'), {})
         database_id = competition.get('database_id')
-        if database_id not in names:
+        if database_id not in (names if table_names is None else table_names):
             continue
         for row in table['rows']:
             if row.get('team_slot') == 0 and row.get('club_uid') is not None:
                 choices.setdefault(row['club_uid'], set()).add(database_id)
     for club in clubs:
         ids = choices.get(club['uid'], set())
+        current = (database_ids or {}).get((links or {}).get(club['uid'], {}).get('current_competition_id'))
+        if current in names:
+            ids = {current}
+            club['league_source'] = 'club_status'
         club['league_key'] = f'db:{next(iter(ids))}' if len(ids) == 1 else None
         club['league_name'] = names[next(iter(ids))] if len(ids) == 1 else None
     present = {c['league_key']: c['league_name'] for c in clubs if c['league_key']}
@@ -244,7 +266,7 @@ def enrich(player):
     player['ability_difference'] = player['pa'] - player['ca'] if player['pa'] is not None and player['ca'] is not None else None
     for field in ('home', 'current', 'world'):
         player[f'rep_{field}'] = (player.get('reputation') or {}).get(field)
-    player['value'] = player.get('transfer_value')
+    market_value_fields(player)
     contract_fields(player)
     player['roles'] = {key: role_score(player, key) for key in ROLES}
     familiar = [(key, value) for key, value in player['roles'].items()
@@ -254,7 +276,7 @@ def enrich(player):
     return player
 
 
-def filter_rows(rows, query, shortlist=()):
+def filter_rows(rows, query, shortlist=(), game_date=None):
     kind = query.get('kind', 'players')
     results = []
     search = normalized(query.get('search', ''))
@@ -262,8 +284,26 @@ def filter_rows(rows, query, shortlist=()):
     positions = set(query.get('position','').split(',')) - {''}
     leagues = set(query.get('league','').split(',')) - {''}
     release_kinds = set(query.get('release_kind','').split(',')) - {''}
+    availability = query.get('availability')
+    today = date.fromisoformat(game_date) if game_date else None
+    deadline = None
+    if availability in ('expiring_6', 'expiring_12') and today:
+        year, month = divmod(today.year * 12 + today.month - 1 + int(availability.split('_')[1]), 12)
+        deadline = date(year, month + 1, min(today.day, monthrange(year, month + 1)[1])).isoformat()
     for row in rows:
-        if search and search not in normalized(f"{row.get('name', '')} {row.get('club_name', '')} {row.get('club_short_name', '')}"):
+        if availability == 'free' and row.get('contract_state') != 'free':
+            continue
+        if availability in ('transfer_listed', 'loan_listed') and row.get(availability) is not True:
+            continue
+        if availability in ('expiring_6', 'expiring_12'):
+            contract = row.get('contract') or {}
+            expiry = row.get('contract_end')
+            if (not deadline or row.get('contract_state') != 'contracted'
+                    or contract.get('end_source') != 'contract' or not expiry
+                    or not contract.get('start') or contract['start'] > today.isoformat()
+                    or not today.isoformat() <= expiry <= deadline):
+                continue
+        if search and search not in normalized(f"{row.get('name', '')} {row.get('short_name', '')} {row.get('club_name', '')} {row.get('club_short_name', '')}"):
             continue
         if 'club' in numeric_choices and row.get('club_uid') not in numeric_choices['club']:
             continue
@@ -289,11 +329,15 @@ def filter_rows(rows, query, shortlist=()):
             continue
         if kind == 'players' and positions and not any((row.get('positions', {}).get(position.lower()) or 0) >= 15 for position in positions):
             continue
-        if query.get('free') == '1' and row.get('club_uid') is not None:
+        if query.get('free') == '1' and row.get('contract_state') != 'free':
             continue
         failed = False
         for field in RANGES:
             actual = row.get('attribute_sum' if field == 'sum' else field)
+            if field == 'release_fee' and release_kinds:
+                fees = [c['value'] for c in (row.get('contract') or {}).get('clauses', [])
+                        if c.get('kind') in release_kinds and c.get('value') is not None]
+                actual = min(fees) if fees else None
             for bound in ('min', 'max'):
                 value = query.get(f'{field}_{bound}')
                 if value and (actual is None or isinstance(actual, dict) or (actual < float(value) if bound == 'min' else actual > float(value))):
@@ -304,14 +348,16 @@ def filter_rows(rows, query, shortlist=()):
         if failed:
             continue
         if query.get('contract_before'):
-            expiry = (row.get('contract') or {}).get('end') or row.get('contract_end')
+            expiry = row.get('contract_end')
             if expiry is None or expiry > query['contract_before']:
                 continue
         if query.get('contract_after'):
             expiry = row.get('contract_end')
             if expiry is None or expiry < query['contract_after']:
                 continue
-        if query.get('no_contract') == '1' and row.get('has_contract_data'):
+        if query.get('no_contract') == '1' and not (row.get('contract_state') == 'free'
+                or kind == 'staff' and row.get('has_contract') is False
+                and not row.get('has_club_appointment')):
             continue
         if 'squad_status' in numeric_choices and row.get('squad_status_code') not in numeric_choices['squad_status']:
             continue
@@ -339,16 +385,23 @@ def filter_rows(rows, query, shortlist=()):
     valid = {'name', 'age', 'club_name', 'ca', 'pa', 'attribute_sum', 'rating', 'reputation', 'nation_id', 'eu_national', 'goalkeeping_sum', 'ability_difference', 'rep_home', 'rep_current', 'rep_world', 'wage', 'value', 'release_fee', 'ca_mean', 'pa_mean', 'age_mean', 'player_count', 'ca_count', 'pa_count', 'age_count', 'team_slot'}
     attribute_columns = {f'attr_{key}' for group in GROUPS.values() for key in group}
     valid.update(('staff_area','staff_role','height_cm','balance','transfer_budget_remaining',
-                  'wage_budget_weekly','league_name','stadium_seated_capacity','stadium_expansion_capacity'))
+                  'wage_budget_weekly','league_name','stadium_name','stadium_seated_capacity','stadium_expansion_capacity',
+                  'release_fee_domestic','release_fee_foreign','model_value','model_fee'))
     if sort not in valid | attribute_columns:
         raise ValueError('Coluna de ordenação inválida.')
+    def sort_value(row):
+        if sort == 'name' and kind == 'clubs':
+            return row.get('short_name') or row.get('name')
+        if sort == 'club_name':
+            return row.get('club_short_name') or row.get('club_name')
+        return row.get('nation_name') if sort == 'nation_id' else column_value(row, sort)
     def key(row):
-        value = row.get('nation_name') if sort == 'nation_id' else column_value(row, sort)
+        value = sort_value(row)
         if isinstance(value, str):
             value = normalized(value)
         return value, row.get('attribute_sum') or -1, normalized(row.get('name'))
-    present = [r for r in results if (r.get('nation_name') if sort == 'nation_id' else column_value(r, sort)) is not None]
-    absent = [r for r in results if (r.get('nation_name') if sort == 'nation_id' else column_value(r, sort)) is None]
+    present = [r for r in results if sort_value(r) is not None]
+    absent = [r for r in results if sort_value(r) is None]
     return sorted(present, key=key, reverse=query.get('direction', 'desc') == 'desc') + absent
 
 
@@ -389,6 +442,9 @@ class Scout:
             with warnings.catch_warnings(record=True) as captured, fmsave.open(copy) as save:
                 progress('Lendo jogadores e atributos…')
                 players = [enrich(p) for p in records(save.players())]
+                for player in players:
+                    player['transfer_listed'], player['loan_listed'] = listing_status(
+                        player, save.info.build, str(save.info.game_date))
                 progress('Lendo staff e clubes…')
                 notes = []
                 try:
@@ -415,6 +471,7 @@ class Scout:
                 club_index = {c['uid']: c for c in clubs}
                 for member in staff:
                     club = club_index.get(member['club_uid'])
+                    member['club_short_name'] = club.get('short_name') if club else None
                     member['club_reputation'] = club['reputation'] if club else None
                     member['club_nation_id'] = club['nation_id'] if club else None
                 try:
@@ -428,18 +485,48 @@ class Scout:
                         if record:
                             club.update({field: record[field] for field in ('balance', 'transfer_budget_remaining', 'wage_budget_weekly')})
                             club['finance_date'] = record['month']
+                            club['finance_source'] = 'monthly'
+                    with save._context.section('game_db') as game_db:
+                        current_finances = read_current_club_finances(
+                            game_db, save._context.own_club_record_spans(), save.info.build,
+                            save.info.game_date, save.info.section_schemas.get('game_db'))
+                    for club in clubs:
+                        if club['uid'] in current_finances:
+                            club.update(current_finances[club['uid']])
                 except (fmsave.FmsaveError, ValueError) as exc:
                     notes.append(f'Finanças dos clubes indisponíveis: {exc}')
+                progress('Lendo empréstimos financeiros…')
                 try:
-                    club_stadium_fields(clubs, records(save.stadiums()))
+                    with save._context.section('game_db') as game_db:
+                        debts = read_current_club_debts(
+                            game_db, save._context.own_club_record_spans(), save.info.build)
+                    for club in clubs:
+                        if club['uid'] in debts:
+                            club.update(debts[club['uid']])
+                except (fmsave.FmsaveError, ValueError) as exc:
+                    notes.append(f'Empréstimos financeiros indisponíveis: {exc}')
+                installed_names = read_installed_names()
+                links, database_ids = {}, {}
+                try:
+                    with save._context.section('game_db') as game_db:
+                        links = read_current_club_links(game_db, save._context.own_club_record_spans(), save.info.build)
+                        layout = find_competition_id_pair_layout(save.info.section_schemas.get('game_db'), save.info.build)
+                        database_ids = locate_competition_database_ids(game_db, layout)
+                except (fmsave.FmsaveError, ValueError) as exc:
+                    notes.append(f'Vínculos atuais dos clubes indisponíveis: {exc}')
+                try:
+                    grounds = stadium_reference_fields(save._context.stadium_index(), installed_names.get('stadiums', {}))
+                    club_stadium_fields(clubs, records(save.stadiums()), links, grounds)
                 except (fmsave.FmsaveError, ValueError) as exc:
                     notes.append(f'Estádios indisponíveis: {exc}')
                 progress('Lendo ligas e competições…')
                 competitions = []
                 try:
                     names = fmsave.read_competition_names(Path(__file__).parent / 'league-names.csv')
+                    table_names = names
+                    names = {**installed_names.get('competitions', {}), **names}
                     competitions = club_league_fields(clubs, records(save.competitions()),
-                                                     records(save.league_tables()), names)
+                                                     records(save.league_tables()), names, links, database_ids, table_names)
                 except (fmsave.FmsaveError, OSError, ValueError) as exc:
                     notes.append(f'Ligas indisponíveis: {exc}')
                 for row in players + staff:
@@ -456,10 +543,14 @@ class Scout:
                 except (fmsave.FmsaveError, ValueError) as exc:
                     managed = []
                     notes.append(f'Time do treinador não identificado: {exc}')
+                buyer = club_index.get(managed[0]['club_uid'], {}) if len(managed) == 1 else {}
+                enrich_estimates(players, str(save.info.game_date), buyer.get('reputation'))
                 meta = {'file': source.name, 'path': str(source), 'date': str(save.info.game_date),
                         'build': save.info.build, 'managed': managed,
                         'counts': {'players': len(players), 'staff': len(staff), 'clubs': len(clubs)},
                         'hidden_female_clubs': hidden_female_clubs,
+                        'listing_status_count': sum(type(p.get('transfer_listed')) is bool
+                                                    and type(p.get('loan_listed')) is bool for p in players),
                         'league_clubs_count': sum(c.get('league_key') is not None for c in clubs),
                         'staff_roles_count': sum(s.get('staff_role_key') != 'unknown' for s in staff),
                         'staff_skills_count': sum(s.get('attribute_sum') is not None for s in staff),
@@ -480,6 +571,21 @@ class Scout:
     def shortlisted(self, kind):
         with self.db() as db:
             return {r[0] for r in db.execute('SELECT uid FROM shortlist WHERE career=? AND kind=?', (self.career, kind))}
+
+    def set_shortlist(self, kind, uids, add):
+        if (not self.meta or not self.career or kind not in ('players','staff')
+                or type(add) is not bool or not isinstance(uids,list) or not uids
+                or len(uids)>len(self.index[kind])
+                or any(type(uid) is not int or uid not in self.index[kind] for uid in uids)):
+            raise ValueError('Seleção inválida para esta carreira.')
+        with self.db() as db:
+            statement = ('INSERT OR IGNORE INTO shortlist VALUES(?,?,?)' if add else
+                         'DELETE FROM shortlist WHERE career=? AND kind=? AND uid=?')
+            db.executemany(statement, [(self.career,kind,uid) for uid in dict.fromkeys(uids)])
+            changed = db.total_changes
+            count = db.execute('SELECT COUNT(*) FROM shortlist WHERE career=? AND kind=?',
+                               (self.career,kind)).fetchone()[0]
+        return {'changed':changed,'shortlist_count':count}
 
     def toggle_shortlist(self, kind, uid):
         if uid not in self.index[kind]:

@@ -5,10 +5,10 @@ if [[ ! -x .venv/bin/python ]]; then
   /opt/homebrew/bin/python3.12 -m venv .venv
 fi
 .venv/bin/python -m pip install -r requirements.txt
-app_dir="$HOME/Library/Application Support/FM Matt Scout/Application/FM Matt Scout.app"
+app_dir="/Applications/FM Matt Scout.app"
 mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
 xcrun swiftc macos/App.swift -O -framework AppKit -framework WebKit -o "$app_dir/Contents/MacOS/FMMattScout"
-cp scout.py server.py presets.py salaries.py staff_skills.py staff_roles.py "$app_dir/Contents/Resources/"
+cp scout.py server.py presets.py salaries.py staff_skills.py staff_roles.py contract_reader.py club_finances.py club_debt.py club_locations.py player_values.py value_model.py "$app_dir/Contents/Resources/"
 cp league-names.csv "$app_dir/Contents/Resources/"
 cp nation-names.json "$app_dir/Contents/Resources/"
 cp club-genders.json "$app_dir/Contents/Resources/"
@@ -30,6 +30,7 @@ xattr -cr "$app_dir"
 codesign --force --deep --sign - "$app_dir"
 xattr -cr "$app_dir"
 codesign --verify --deep --strict "$app_dir"
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app_dir"
 mkdir -p dist
 ditto -c -k --keepParent --norsrc --noextattr "$app_dir" "$PWD/dist/FM Matt Scout.zip"
 print "Aplicativo criado: $app_dir"

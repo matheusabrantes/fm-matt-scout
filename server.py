@@ -12,12 +12,86 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from scout import GROUPS, ROLES, NATION_NAMES, REGIONS, STAFF_AREAS, STAFF_ROLES, Scout, filter_rows, column_value
+from staff_skills import SCORING_SKILLS
 from presets import Presets, validate_filter
 from salaries import SalarySettings
 from fmsave.models.players import Trait
 
 ROOT = Path(__file__).parent
 SAVE_DIR = Path.home() / 'Library/Application Support/Sports Interactive/Football Manager 26/games'
+
+
+
+COLUMN_GROUPS = {
+    'players': {
+        'Identificação': ['name','age','positions','nation_id','eu_national'],
+        'Clube e equipe': ['club_name','team_slot','league_name'],
+        'Capacidade e avaliação': ['ca','pa','ability_difference','rating','attribute_sum','goalkeeping_sum'],
+        'Mercado e contrato': ['model_value','model_fee','wage','release_fee','release_fee_domestic','release_fee_foreign','value'],
+        'Características': ['height_cm'],
+        'Reputação': ['rep_home','rep_current','rep_world'],
+        **{group: [f'attr_{key}' for key in fields]
+           for group, fields in GROUPS.items() if group != 'Profissionais'},
+    },
+    'staff': {
+        'Identificação': ['name','age','nation_id','eu_national'],
+        'Cargo e clube': ['staff_role','staff_area','club_name','league_name'],
+        'Capacidade e avaliação': ['ca','pa','ability_difference','attribute_sum'],
+        'Contrato': ['wage'],
+        'Gestão e liderança': [f'attr_{key}' for key in ('authority','people_management','motivating','working_with_youngsters','determination')],
+        'Treinamento': [f'attr_{key}' for key in ('attacking','defending','possession','technical','tactical','tactical_knowledge','fitness','goalkeeping','set_pieces')],
+        'Recrutamento': [f'attr_{key}' for key in ('judging_player_ability','judging_player_potential','judging_player_data','judging_staff_ability','negotiating')],
+        'Saúde': ['attr_physiotherapy','attr_sports_science'],
+        'Goleiros (legado)': ['attr_gk_handling','attr_gk_distribution'],
+        'Personalidade': [f'attr_{key}' for key in GROUPS['Personalidade']],
+    },
+    'clubs': {
+        'Identidade': ['name','nation_id','league_name'],
+        'Reputação': ['reputation'],
+        'Elenco': ['player_count','ca_mean','pa_mean','age_mean'],
+        'Finanças': ['balance','transfer_budget_remaining','wage_budget_weekly'],
+        'Estádio': ['stadium_name','stadium_seated_capacity','stadium_expansion_capacity'],
+        'Cobertura das médias': ['ca_count','pa_count','age_count'],
+    },
+}
+COLUMN_ORDER = {kind: {column: index for index, column in enumerate(
+    column for columns in groups.values() for column in columns)}
+    for kind, groups in COLUMN_GROUPS.items()}
+
+
+def ordered_columns(columns, kind):
+    order = COLUMN_ORDER[kind]
+    return sorted(columns, key=lambda column: order.get(column, len(order)))
+
+
+def read_layouts(path):
+    if not path.exists():
+        return {}
+    layout = json.loads(path.read_text())
+    if not isinstance(layout, dict):
+        raise ValueError('Layout inválido.')
+    version = layout.pop('_version', 0)
+    if version not in (0, 1, 2):
+        raise ValueError('Versão de layout não suportada.')
+    if version == 0:
+        if 'players' in layout:
+            if not isinstance(layout['players'], list):
+                raise ValueError('Layout de jogadores inválido.')
+            columns = [c for c in layout['players'] if c not in ('value', 'model_value', 'model_fee')]
+            anchor = 'club_name' if 'club_name' in columns else 'name'
+            index = columns.index(anchor) + 1
+            columns[index:index] = ['model_value', 'model_fee']
+            layout['players'] = columns
+    if version < 2:
+        for kind in COLUMN_GROUPS:
+            if kind in layout:
+                if not isinstance(layout[kind], list) or any(not isinstance(c, str) for c in layout[kind]):
+                    raise ValueError('Layout inválido.')
+                layout[kind] = ordered_columns(layout[kind], kind)
+        temporary = path.with_suffix('.tmp')
+        temporary.write_text(json.dumps({**layout, '_version': 2}))
+        temporary.replace(path)
+    return layout
 
 
 def serve(port=0, storage=None):
@@ -28,8 +102,8 @@ def serve(port=0, storage=None):
     lock = threading.RLock()
     state = {'loading': False, 'progress': '', 'error': None}
     layout_path = scout.storage.parent / 'layouts.json'
-    layout_columns = {'name','age','positions','club_name','ca','pa','attribute_sum','goalkeeping_sum','rating','nation_id','reputation','ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot','height_cm','balance','transfer_budget_remaining','wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity','league_name'} | {f'attr_{key}' for group in GROUPS.values() for key in group}
-    layout_columns.update(('eu_national','staff_role','staff_area'))
+    layout_columns = {'name','age','positions','club_name','ca','pa','attribute_sum','goalkeeping_sum','rating','nation_id','reputation','ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count','team_slot','height_cm','balance','transfer_budget_remaining','wage_budget_weekly','stadium_seated_capacity','stadium_expansion_capacity','league_name','stadium_name','model_value','model_fee'} | {f'attr_{key}' for group in GROUPS.values() for key in group}
+    layout_columns.update(('eu_national','staff_role','staff_area','release_fee_domestic','release_fee_foreign'))
 
     def load(path):
         try:
@@ -87,7 +161,7 @@ def serve(port=0, storage=None):
                         self.reply({**state, 'meta': scout.meta,
                                     'saves': [{'path': str(p), 'name': p.name, 'size': p.stat().st_size}
                                               for p in sorted(SAVE_DIR.glob('*.fm'), key=lambda p: p.stat().st_mtime, reverse=True)],
-                                    'groups': GROUPS,
+                                    'groups': GROUPS, 'column_groups': COLUMN_GROUPS, 'staff_scoring_attributes': SCORING_SKILLS,
                                     'traits': [{'id': t.value, 'name': t.name.lower().replace('_', ' ')} for t in Trait if t.value >= 0],
                                     'roles': {k: {'name': v[0], 'position': v[1], 'weights': v[2]} for k, v in ROLES.items()}})
                         return
@@ -95,7 +169,7 @@ def serve(port=0, storage=None):
                         self.reply({'version': 1, 'presets': presets.read()})
                         return
                     if path == 'api/layouts':
-                        self.reply(json.loads(layout_path.read_text()) if layout_path.exists() else {})
+                        self.reply(read_layouts(layout_path))
                         return
                     if state['loading']:
                         self.reply({'error': 'Aguarde a leitura do save terminar.'}, 409)
@@ -108,7 +182,7 @@ def serve(port=0, storage=None):
                         raise ValueError('Tipo de registro inválido.')
                     if path == 'api/options':
                         rows = scout.rows[kind]
-                        clubs = {r['club_uid']: r.get('club_short_name') or r.get('club_name') or r.get('name')
+                        clubs = {r['club_uid']: r.get('club_short_name') or r.get('short_name') or r.get('club_name') or r.get('name')
                                  for r in rows if r.get('club_uid') is not None}
                         self.reply({'clubs': sorted([{'uid': k, 'name': v} for k, v in clubs.items()], key=lambda c: c['name'] or ''),
                                     'nations': [{'id': n, 'name': NATION_NAMES[n]} for n in sorted({n for r in rows for n in r.get('nation_ids', []) if n in NATION_NAMES})],
@@ -128,14 +202,14 @@ def serve(port=0, storage=None):
                         if kind == 'clubs':
                             scope = query.get('squad_scope', 'first')
                             candidates = [{**r, **r['squad_metrics'][scope]} for r in candidates]
-                        rows = filter_rows(candidates, query, selected)
+                        rows = filter_rows(candidates, query, selected, game_date=scout.meta['date'])
                         offset = max(0, int(query.get('offset', 0)))
                         limit = min(200, max(1, int(query.get('limit', 100))))
                         columns = ('uid', 'unique_id', 'name', 'age', 'nation_id', 'nation_name', 'eu_national', 'club_name', 'club_short_name', 'club_uid',
                                    'natural_positions', 'team_slot', 'ca', 'pa', 'attribute_sum', 'goalkeeping_sum', 'rating', 'best_role', 'contract_end',
-                                   'ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee')
+                                   'ability_difference','rep_home','rep_current','rep_world','wage','value','release_fee','model_value_basis','model_fee_basis')
                         if kind == 'clubs':
-                            columns += ('reputation','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count')
+                            columns += ('short_name','reputation','ca_mean','pa_mean','age_mean','player_count','ca_count','pa_count','age_count')
                         requested = query.get('columns', '').split(',')
                         if any(c and c not in layout_columns for c in requested):
                             raise ValueError('Coluna desconhecida.')
@@ -190,10 +264,10 @@ def serve(port=0, storage=None):
                 with lock:
                     if path == 'api/layouts':
                         for key, value in body.items():
-                            if key not in scout.rows or not isinstance(value, list) or not 1 <= len(value) <= 80 or 'name' not in value or any(c not in layout_columns for c in value):
-                                raise ValueError('Layout inválido. Preserve a coluna Nome e use até 80 colunas.')
+                            if key not in scout.rows or not isinstance(value, list) or not 1 <= len(value) <= 82 or 'name' not in value or any(c not in layout_columns for c in value):
+                                raise ValueError('Layout inválido. Preserve a coluna Nome e use até 82 colunas.')
                         temporary = layout_path.with_suffix('.tmp')
-                        temporary.write_text(json.dumps(body))
+                        temporary.write_text(json.dumps({**{kind: ordered_columns(columns, kind) for kind, columns in body.items()}, '_version': 2}))
                         temporary.replace(layout_path)
                         self.reply({'ok': True})
                         return
@@ -221,11 +295,16 @@ def serve(port=0, storage=None):
                         if not scout.meta:
                             raise ValueError('Abra um save primeiro.')
                         reference = None
-                        if 'amount' in body:
+                        if 'amount' in body or 'money_amount' in body:
                             if body.get('kind') not in ('players','staff') or type(body.get('uid')) is not int:
-                                raise ValueError('Selecione um jogador ou staff para conferir o salário.')
+                                raise ValueError('Selecione um jogador ou staff para conferir a conversão.')
                             reference = scout.index[body['kind']][body['uid']]
                         self.reply(salaries.update(scout.career, body, reference))
+                        return
+                    if path == 'api/shortlist/batch':
+                        if body.get('action') not in ('add','remove'):
+                            raise ValueError('Ação de lista inválida.')
+                        self.reply(scout.set_shortlist(body.get('kind'), body.get('uids'), body['action']=='add'))
                         return
                     if path == 'api/shortlist':
                         kind = body['kind']

@@ -1,0 +1,191 @@
+{
+  "game_date": "2025-12-30",
+  "money_rate": 1.1571304675155154,
+  "source": "Faixas EUR observadas no FM26 aberto, carreira COR. Cabeçalho do jogador para Real Madrid; tabela da equipe principal para Corinthians. Não são preços negociados.",
+  "controls": [
+    {
+      "player": {
+        "uid": 85138874,
+        "name": "Kylian Mbappé",
+        "age": 27,
+        "ca": 195,
+        "pa": 197,
+        "rep_world": 9750,
+        "contract_state": "contracted",
+        "contract_end": "2029-06-30",
+        "contract": {
+          "start": "2024-07-01",
+          "end_source": "contract"
+        },
+        "club_uid": 1734,
+        "club_reputation": 9098,
+        "value": 262440000,
+        "transfer_listed": false,
+        "wage": 496918
+      },
+      "fm_low": 298000000,
+      "fm_high": 357000000
+    },
+    {
+      "player": {
+        "uid": 19301966,
+        "name": "Vinícius Júnior",
+        "age": 25,
+        "ca": 175,
+        "pa": 190,
+        "rep_world": 8750,
+        "contract_state": "contracted",
+        "contract_end": "2027-06-30",
+        "contract": {
+          "start": "2024-01-01",
+          "end_source": "contract"
+        },
+        "club_uid": 1734,
+        "club_reputation": 9098,
+        "value": 131543072,
+        "transfer_listed": false,
+        "wage": 344735
+      },
+      "fm_low": 111000000,
+      "fm_high": 169000000
+    },
+    {
+      "player": {
+        "uid": 29232903,
+        "name": "Jude Bellingham",
+        "age": 22,
+        "ca": 176,
+        "pa": 188,
+        "rep_world": 8570,
+        "contract_state": "contracted",
+        "contract_end": "2029-06-30",
+        "contract": {
+          "start": "2024-12-30",
+          "end_source": "contract"
+        },
+        "club_uid": 1734,
+        "club_reputation": 9098,
+        "value": 167223104,
+        "transfer_listed": false,
+        "wage": 344735
+      },
+      "fm_low": 193000000,
+      "fm_high": 215000000
+    },
+    {
+      "player": {
+        "uid": 2000161825,
+        "name": "Breno Bidon",
+        "age": 20,
+        "ca": 128,
+        "pa": 150,
+        "rep_world": 2750,
+        "contract_state": "contracted",
+        "contract_end": "2029-12-31",
+        "contract": {
+          "start": "2025-01-06",
+          "end_source": "contract"
+        },
+        "club_uid": 318,
+        "club_reputation": 7000,
+        "value": 10496898,
+        "transfer_listed": null,
+        "wage": 2659
+      },
+      "fm_low": 12000000,
+      "fm_high": 14000000
+    },
+    {
+      "player": {
+        "uid": 19326381,
+        "name": "Yuri Alberto",
+        "age": 24,
+        "ca": 140,
+        "pa": 144,
+        "rep_world": 4000,
+        "contract_state": "contracted",
+        "contract_end": "2030-07-22",
+        "contract": {
+          "start": "2025-07-24",
+          "end_source": "contract"
+        },
+        "club_uid": 318,
+        "club_reputation": 7000,
+        "value": 11217541,
+        "transfer_listed": false,
+        "wage": 37550
+      },
+      "fm_low": 10000000,
+      "fm_high": 13000000
+    },
+    {
+      "player": {
+        "uid": 14208019,
+        "name": "Rodrigo Garro",
+        "age": 27,
+        "ca": 136,
+        "pa": 142,
+        "rep_world": 3750,
+        "contract_state": "contracted",
+        "contract_end": "2028-12-31",
+        "contract": {
+          "start": "2024-01-05",
+          "end_source": "contract"
+        },
+        "club_uid": 318,
+        "club_reputation": 7000,
+        "value": 9721868,
+        "transfer_listed": false,
+        "wage": 25033
+      },
+      "fm_low": 10500000,
+      "fm_high": 13000000
+    },
+    {
+      "player": {
+        "uid": 19270231,
+        "name": "Hugo Souza",
+        "age": 26,
+        "ca": 133,
+        "pa": 140,
+        "rep_world": 4250,
+        "contract_state": "contracted",
+        "contract_end": "2030-12-31",
+        "contract": {
+          "start": "2025-12-29",
+          "end_source": "contract"
+        },
+        "club_uid": 318,
+        "club_reputation": 7000,
+        "value": 8749681,
+        "transfer_listed": false,
+        "wage": 18909
+      },
+      "fm_low": 9400000,
+      "fm_high": 11500000
+    },
+    {
+      "player": {
+        "uid": 16096729,
+        "name": "André Ramalho",
+        "age": 33,
+        "ca": 124,
+        "pa": 136,
+        "rep_world": 4000,
+        "contract_state": "contracted",
+        "contract_end": "2026-12-31",
+        "contract": {
+          "start": "2024-07-11",
+          "end_source": "contract"
+        },
+        "club_uid": 318,
+        "club_reputation": 7000,
+        "value": 811348,
+        "transfer_listed": false,
+        "wage": 8402
+      },
+      "fm_low": 600000,
+      "fm_high": 950000
+    }
+  ]
+}
