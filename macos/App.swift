@@ -6,10 +6,11 @@ final class ScoutWebView: WKWebView {
     var titlebarDragRect: NSRect?
 
     override func hitTest(_ point: NSPoint) -> NSView? {
+        if window?.styleMask.contains(.fullScreen) == true { return super.hitTest(point) }
         let local = convert(point, from: superview)
         let topPoint = NSPoint(x: local.x, y: isFlipped ? local.y : bounds.height - local.y)
         let onControls = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton]
-            .compactMap { window?.standardWindowButton($0) }.contains { button in
+            .compactMap { window?.standardWindowButton($0) }.filter { !$0.isHiddenOrHasHiddenAncestor }.contains { button in
                 let frame = convert(button.bounds, from: button)
                 return topPoint.x >= frame.minX - 8 && topPoint.x <= frame.maxX + 8
             }
@@ -20,7 +21,7 @@ final class ScoutWebView: WKWebView {
     }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
     var window: NSWindow!
     var web: ScoutWebView!
     var process: Process?
@@ -76,6 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         web.navigationDelegate = self
         web.uiDelegate = self
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1400, height: 900), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.delegate = self
         window.title = "FM Matt Scout 26"
         window.styleMask.insert(.fullSizeContentView)
         window.titleVisibility = .hidden
@@ -93,6 +95,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         NSApp.activate(ignoringOtherApps: true)
         startBackend()
     }
+
+    func syncFullScreen() {
+        let fullScreen = window.styleMask.contains(.fullScreen)
+        window.toolbar?.isVisible = !fullScreen
+        web.evaluateJavaScript("document.documentElement.classList.toggle('native-fullscreen', \(fullScreen))")
+    }
+
+    func windowDidEnterFullScreen(_ notification: Notification) { syncFullScreen() }
+    func windowDidExitFullScreen(_ notification: Notification) { syncFullScreen() }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { syncFullScreen() }
 
     func startBackend() {
         guard let python = Bundle.main.object(forInfoDictionaryKey: "MattScoutPython") as? String,

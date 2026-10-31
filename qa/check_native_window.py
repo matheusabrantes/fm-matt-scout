@@ -138,12 +138,69 @@ with tempfile.TemporaryDirectory(prefix="fm-native-window-") as scratch:
       owner.window.toggleFullScreen(nil)
       for _ in 0..<200 { if entered>0 {break};await pump(0.05) }
       check(entered==1 && owner.window.styleMask.contains(.fullScreen),"native fullscreen enter notification and state")
+      await pump(0.4)
+      for collapsed in [false,true] {
+       _=try await js("document.body.classList.toggle('sidebar-collapsed',\(collapsed));document.querySelector('#toolbar-actions').hidden=false")
+       await pump(0.4)
+       let header=try await domRect(".titlebar")
+       let toggle=try await domRect("#sidebar-toggle")
+       let fullscreen=try await js("document.documentElement.classList.contains('native-fullscreen')") as! Bool
+       print("FULLSCREEN_GEOMETRY", "collapsed",collapsed,"domState",fullscreen,
+             "nativeToolbarHeight",owner.window.frame.height-owner.window.contentLayoutRect.height,
+             "nativeToolbarVisible",owner.window.toolbar?.isVisible as Any,
+             "window",owner.window.frame,"webFrame",owner.web.frame,"webBounds",owner.web.bounds,
+             "header",header,"toggle",toggle,"toggleHit",topHit(toggle.midX,toggle.midY) != nil,
+             "left28Hit",topHit(28,26) != nil)
+       for kind in [NSWindow.ButtonType.closeButton,.miniaturizeButton,.zoomButton] {
+        if let button=owner.window.standardWindowButton(kind) {
+         print("FULLSCREEN_NATIVE_CONTROL",kind,"hidden",button.isHiddenOrHasHiddenAncestor,
+               "frame",owner.web.convert(button.bounds,from:button))
+        }
+       }
+       fflush(stdout)
+       check(owner.window.toolbar?.isVisible == false,"native floating toolbar is hidden in fullscreen so it cannot cover the web header")
+       check(fullscreen,"native fullscreen state reaches the DOM")
+       check(abs(owner.web.bounds.height-owner.window.frame.height)<1,"fullscreen WebKit fills the window")
+       check(abs(header.minY)<1 && abs(header.height-52)<1,"fullscreen web header remains visible at y0/height52")
+       check(abs(toggle.minX-12)<1 && abs(toggle.midX-28)<1,"fullscreen toggle moves to x12/center28 in both sidebar states")
+       check(topHit(toggle.midX,toggle.midY) != nil && topHit(toggle.minX+2,toggle.midY) != nil && topHit(28,26) != nil,"hidden native controls do not swallow fullscreen sidebar toggle or its left edge")
+       for selector in ["#search","#advanced-button","#columns","#theme-toggle"] {
+        let control=try await domRect(selector)
+        check(control.minY>=0 && control.maxY<=52 && control.width>0,"fullscreen header control stays visible: \(selector)")
+        check(topHit(control.midX,control.midY) != nil,"fullscreen header control remains web interactive: \(selector)")
+       }
+      }
+      owner.web.reload();await pump(0.4)
+      var fullscreenAfterReload=false
+      for _ in 0..<100 {
+       if let value=try await js("document.documentElement.classList.contains('native-fullscreen')") as? Bool,value {
+        fullscreenAfterReload=true;break
+       }
+       await pump(0.05)
+      }
+      check(fullscreenAfterReload,"native fullscreen DOM state survives page reload")
+      let toggleAfterReload=try await domRect("#sidebar-toggle")
+      check(abs(toggleAfterReload.minX-12)<1 && topHit(toggleAfterReload.minX+2,toggleAfterReload.midY) != nil,"fullscreen toggle position and left-edge clicks survive page reload")
       owner.window.toggleFullScreen(nil)
       for _ in 0..<200 { if exited>0 {break};await pump(0.05) }
       check(exited==1 && !owner.window.styleMask.contains(.fullScreen),"native fullscreen exit notification and state")
       await pump(0.2)
       check(abs(owner.window.frame.height-owner.window.contentLayoutRect.height-52)<1,"native titlebar height restored after fullscreen")
+      check(owner.window.toolbar?.isVisible == true,"native toolbar visibility restored after fullscreen")
       check(abs(owner.web.bounds.height-owner.window.frame.height)<1,"fullwindow web restored after fullscreen")
+      let fullscreenAfterExit=try await js("document.documentElement.classList.contains('native-fullscreen')") as! Bool
+      check(!fullscreenAfterExit,"native fullscreen DOM state clears on exit")
+      for collapsed in [false,true] {
+       _=try await js("document.body.classList.toggle('sidebar-collapsed',\(collapsed))")
+       await pump(0.4)
+       let toggle=try await domRect("#sidebar-toggle")
+       let header=try await domRect(".titlebar")
+       let padding=try await js("parseFloat(getComputedStyle(document.querySelector('.titlebar')).paddingLeft)") as! Double
+       check(abs(toggle.minX-(collapsed ? 90 : 180))<1,"windowed sidebar toggle position restored")
+       check(abs(padding-(collapsed ? 136 : 20))<1,"windowed header spacing restored")
+       check(abs(header.minY)<1 && abs(header.height-52)<1,"windowed header restored at y0/height52")
+       check(topHit(toggle.midX,toggle.midY) != nil,"windowed sidebar toggle remains clickable after fullscreen")
+      }
       owner.window.performMiniaturize(nil)
       for _ in 0..<100 { if minimized>0 {break};await pump(0.05) }
       check(minimized==1 && owner.window.isMiniaturized,"native minimize notification and state")
