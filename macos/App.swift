@@ -2,9 +2,27 @@ import AppKit
 import WebKit
 import UniformTypeIdentifiers
 
+final class ScoutWebView: WKWebView {
+    var titlebarDragRect: NSRect?
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let local = convert(point, from: superview)
+        let topPoint = NSPoint(x: local.x, y: isFlipped ? local.y : bounds.height - local.y)
+        let onControls = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton]
+            .compactMap { window?.standardWindowButton($0) }.contains { button in
+                let frame = convert(button.bounds, from: button)
+                return topPoint.x >= frame.minX - 8 && topPoint.x <= frame.maxX + 8
+            }
+        // Returning nil lets AppKit handle dragging and the system's titlebar double-click action.
+        if topPoint.y >= 0, topPoint.y < 52,
+           onControls || titlebarDragRect?.contains(topPoint) == true { return nil }
+        return super.hitTest(point)
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
     var window: NSWindow!
-    var web: WKWebView!
+    var web: ScoutWebView!
     var process: Process?
     var didLoad = false
     var quitting = false
@@ -37,6 +55,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         controller.add(self, name: "saveFile")
         controller.add(self, name: "copyName")
         controller.add(self, name: "themePreference")
+        controller.add(self, name: "windowDragRegion")
+        controller.addUserScript(WKUserScript(source: """
+            if (location.hostname === '127.0.0.1') {
+                const heading = document.querySelector('.toolbar-heading');
+                if (heading) new ResizeObserver(() => {
+                    const r = heading.getBoundingClientRect();
+                    window.webkit.messageHandlers.windowDragRegion.postMessage([r.x, 0, r.width, 52]);
+                }).observe(heading);
+            }
+            """, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         if let theme = UserDefaults.standard.string(forKey: "fmscout.theme"), ["light", "dark"].contains(theme) {
             NSApp.appearance = NSAppearance(named: theme == "dark" ? .darkAqua : .aqua)
             let seed = "if(location.hostname==='127.0.0.1')window.fmscoutNativeTheme='\(theme)';"
@@ -44,12 +72,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         }
         let config = WKWebViewConfiguration()
         config.userContentController = controller
-        web = WKWebView(frame: .zero, configuration: config)
+        web = ScoutWebView(frame: .zero, configuration: config)
         web.navigationDelegate = self
         web.uiDelegate = self
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1400, height: 900), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "FM Matt Scout 26"
-        window.minSize = NSSize(width: 850, height: 600)
+        window.styleMask.insert(.fullSizeContentView)
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.isMovableByWindowBackground = true
+        let nativeToolbar = NSToolbar(identifier: "WindowChrome")
+        nativeToolbar.displayMode = .iconOnly
+        window.toolbar = nativeToolbar
+        window.toolbarStyle = .unified
+        window.titlebarSeparatorStyle = .none
+        window.contentMinSize = NSSize(width: 850, height: 600)
         window.contentView = web
         window.center()
         window.makeKeyAndOrderFront(nil)
@@ -120,6 +157,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.frameInfo.isMainFrame, message.frameInfo.securityOrigin.host == "127.0.0.1" else { return }
+        if message.name == "windowDragRegion", message.frameInfo.request.url?.port == web.url?.port {
+            web.titlebarDragRect = nil
+            if let rect = message.body as? [Double], rect.count == 4, rect.allSatisfy({ $0.isFinite }),
+               rect[0] >= 0, rect[1] == 0, rect[2] >= 0, rect[3] == 52,
+               rect[0] + rect[2] <= web.bounds.width {
+                web.titlebarDragRect = NSRect(x: rect[0], y: rect[1], width: rect[2], height: rect[3])
+            }
+            return
+        }
         if message.name == "openSave" { openSave(); return }
         if message.name == "themePreference", message.frameInfo.request.url?.port == web.url?.port,
            let theme = message.body as? String, ["light", "dark"].contains(theme) {

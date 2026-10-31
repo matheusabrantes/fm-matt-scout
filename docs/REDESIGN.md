@@ -56,7 +56,8 @@ Resultados e diferenças estão registrados abaixo; a conferência nativa comple
 
 ### Adaptações de produção
 
-- Chrome do NSWindow e controles de janela reais foram preservados; não desenhar semáforos decorativos sobre os controles nativos. A toolbar web continua com 52px; o macOS gerencia a barra de título adicional.
+- A janela usa conteúdo em toda a área, título oculto e barra transparente. Uma NSToolbar unificada em modo iconOnly integra os controles reais do macOS à toolbar web de 52px, sem uma faixa de título adicional.
+- O título e as áreas junto aos controles nativos deixam os eventos chegar ao AppKit; busca, filtros, tema e botão da sidebar continuam no WebKit. A região do título acompanha a geometria real por ResizeObserver, com ponte restrita ao frame principal e à mesma porta local. Arraste e duplo clique permanecem sob responsabilidade do macOS.
 - Meu time mantém a ordenação contínua e o ranking/numeração solicitados anteriormente, em vez de reordenar os resultados em grupos de posição. O filtro de equipe continua no sheet.
 - Colunas são confirmadas por Salvar layout, preservando o fluxo de persistência real, em vez do localStorage imediato do protótipo. Layout existente não é substituído pelo padrão novo.
 - Informações de identificação/leitura do jogador ficam numa expansão dentro de Atributos; os atributos aparecem primeiro. Relatório, evolução, estilo e empréstimos continuam em Mais informações.
@@ -107,3 +108,10 @@ o diálogo é gerenciado pelo macOS e a aprovação é feita pelo proprietário.
 
 A PR #7 foi mesclada antes do push do redesign. Por isso, estas mudanças seguem
 em uma PR complementar para main, sem repetir as alterações já mescladas.
+
+### Integração da janela — 31/10/2026
+
+- `python3 qa/check_native_window.py`: 376 verificações aprovadas sobre as classes reais do app, com servidor de fixture local e arquivos temporários isolados. Cobre 40 combinações de tamanho/sidebar/ações, mínimo de 850×600, controles nativos centrados na faixa de 52px, hit testing e validação da ponte. Entrada/saída de tela cheia e minimizar/restaurar foram confirmados por notificações e estado do AppKit.
+- A compilação otimizada foi conferida com dados reais: busca e títulos Jogadores/Staff/Clubes, temas claro/escuro e 10 ciclos de recolher/expandir a sidebar. Cliques no botão da sidebar e no tema passaram pela toolbar. Duplo clique com sidebar aberta e recolhida ampliou e restaurou a janela.
+- A automação em segundo plano não desloca nem a janela original. O proprietário confirmou com mouse real, na compilação final isolada, que arraste pelo cabeçalho e redimensionamento pela borda funcionam.
+- A alteração funcional fica em `macos/App.swift`; HTML, CSS, componentes, leitores e dados pessoais não foram alterados. A compilação de QA usa armazenamento separado. Não houve atualização do bundle instalado nem do ZIP nesta etapa.
